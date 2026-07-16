@@ -331,7 +331,7 @@ else:
                                             """, (edit_nome, login_ajustado, edit_senha, emp_id))
                                             conn.commit()
                                             conn.close()
-                                            st.success("✅ Dados da empresa updated com sucesso!")
+                                            st.success("✅ Dados da empresa atualizados com sucesso!")
                                             st.rerun()
                                         except sqlite3.IntegrityError:
                                             st.error("Este nome de usuário já está sendo usado por outra empresa.")
@@ -526,7 +526,6 @@ else:
                 # --- TABELA DE APURAÇÃO GERAL ---
                 st.subheader("📊 Apuração Geral do Lote")
                 
-                # Elementos e Porcentagens calculados dinamicamente para exibição e uso no PDF
                 porc_ossos = (ossos_val / p_bruto * 100) if p_bruto > 0 else 0.0
                 porc_quebra = (quebra_val / p_bruto * 100) if p_bruto > 0 else 0.0
                 porc_exsudato = (exsudato_val / p_bruto * 100) if p_bruto > 0 else 0.0
@@ -629,7 +628,7 @@ else:
                     "PRATA": [
                         f"R$ {compra_prata:.2f}", f"R$ {total_vendas_prata:.2f}", f"{peso_desossado_prata:.3f}",
                         f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_prata:.2f}", f"R$ {margem_r_prata:.2f}",
-                        f"{margem_p_prata*100:.2f}%", f"{markup_prata*100:.2f}%", f"R$ {p_medio_compra_prata:.2f}",
+                        f"{markup_prata*100:.2f}%", f"{markup_prata*100:.2f}%", f"R$ {p_medio_compra_prata:.2f}",
                         f"R$ {p_medio_compra_com_prata:.2f}", f"R$ {p_medio_venda_prata:.2f}"
                     ],
                     "Total": [
@@ -725,7 +724,7 @@ else:
                     pdf.cell(190, 8, f"LOTE #{id_selecionado} - {tipo_animal_atual} | Data: {data_br}", ln=1)
                     pdf.ln(2)
                     
-                    # --- NOVO QUADRO EXPORTADO: APURAÇÃO GERAL DO LOTE ---
+                    # --- APURAÇÃO GERAL DO LOTE ---
                     pdf.set_fill_color(230, 237, 242) # Cinza azulado suave
                     pdf.set_font("Arial", style="B", size=10)
                     pdf.cell(190, 7, "APURACAO GERAL DO LOTE", ln=1, fill=True, align="C")
@@ -738,14 +737,13 @@ else:
                     pdf.cell(40, 6, "Porcentagem", border=1, align="C", fill=True)
                     pdf.ln()
                     
-                    # Dados extraídos e preparados para a escrita segura no PDF (Evitando acentos incompatíveis)
+                    # Dados extraídos e preparados
                     itens_apuracao = ["PESO BRUTO/KG", "OSSOS/MUXIBA", "QUEBRA NAO IDENTIF.", "ESCORRIMENTO", "Peso Final", "TOTAL DE QUEBRA"]
                     pesos_txt = [formatar_peso_visual(p_bruto), formatar_peso_visual(ossos_val), formatar_peso_visual(quebra_val), formatar_peso_visual(exsudato_val), formatar_peso_visual(peso_final), formatar_peso_visual(total_quebra)]
                     valores_txt = [f"R$ {valor_total_compra:.2f}", "-", "-", "-", f"R$ {valor_total_compra:.2f}", "-"]
                     porcentagens_txt = ["100.00%", f"{porc_ossos:.2f}%", f"{porc_quebra:.2f}%", f"{porc_exsudato:.2f}%", f"{porc_final:.2f}%", f"{porc_total_quebra:.2f}%"]
                     
                     for idx_item in range(len(itens_apuracao)):
-                        # Se for "Peso Final", coloca em negrito para destacar
                         if idx_item == 4:
                             pdf.set_font("Arial", style="B", size=8)
                         else:
@@ -759,10 +757,10 @@ else:
                     
                     pdf.ln(4)
                     
-                    # --- QUADRO DE INDICADORES (Colorido com Verde-limão) ---
+                    # --- QUADRO DE INDICADORES (Removida a palavra 'VERDE') ---
                     pdf.set_fill_color(146, 208, 80) # Verde #92D050
                     pdf.set_font("Arial", style="B", size=10)
-                    pdf.cell(190, 7, "QUADRO DE INDICADORES (VERDE)", ln=1, fill=True, align="C")
+                    pdf.cell(190, 7, "QUADRO DE INDICADORES", ln=1, fill=True, align="C")
                     pdf.set_font("Arial", size=8)
                     
                     pdf.cell(70, 6, "INDICADOR", border=1, fill=True)
@@ -806,10 +804,10 @@ else:
                     
                     pdf.ln(4)
                     
-                    # Detalhamento de Cortes (Amarelo-ouro)
+                    # DETALHAMENTO DE CORTES (Removida a palavra 'AMARELO')
                     pdf.set_fill_color(255, 192, 0) # Amarelo #FFC000
                     pdf.set_font("Arial", style="B", size=10)
-                    pdf.cell(190, 8, "DETALHAMENTO DE CORTES (AMARELO)", ln=1, fill=True, align="C")
+                    pdf.cell(190, 8, "DETALHAMENTO DE CORTES", ln=1, fill=True, align="C")
                     pdf.set_font("Arial", size=7)
                     
                     pdf.cell(45, 6, "Corte", border=1, fill=True)
