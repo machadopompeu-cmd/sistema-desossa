@@ -252,6 +252,7 @@ elif menu == "Histórico & Edição":
         p_bruto = acao_row["peso_bruto"]
         p_comp_kg = acao_row["preco_animal_kg"]
         valor_total_compra = p_bruto * p_comp_kg
+        tipo_animal_atual = acao_row["tipo_animal"]
         
         # Deduções e Apuração do Lote
         ossos_val = acao_row["ossos_muxiba"] if acao_row["ossos_muxiba"] else 0.0
@@ -319,20 +320,23 @@ elif menu == "Histórico & Edição":
         peso_desossado_prata = sum(df_cortes[df_cortes["qualidade"] == "PRATA"]["peso"])
         peso_desossado_total = peso_desossado_ouro + peso_desossado_prata
         
-        # Custo Efetivo Total
+        # Custo Efetivo Total (Ajustado dinamicamente para aplicar 0 se for SUINO)
         custo_efetivo_total_ouro = 0
         custo_efetivo_total_prata = 0
+        
+        # Define a taxa de embalagem conforme o tipo do animal
+        taxa_embalagem = 0.0 if tipo_animal_atual == "SUINO" else 0.0003
         
         for i, row in df_cortes.iterrows():
             peso = row['peso']
             p_venda = row['preco_venda']
             p_custo_kg = p_venda * coeficiente
             
-            # Ajuste exato das fórmulas do Excel (Bisteca multiplica pelo preço; outros pelo peso)
+            # Aplica a taxa correta baseada no tipo de animal e na ordem do corte
             if i == 0:
-                embalagem = 0.0003 * p_venda
+                embalagem = taxa_embalagem * p_venda
             else:
-                embalagem = 0.0003 * peso
+                embalagem = taxa_embalagem * peso
                 
             custo_efetivo_kg = p_custo_kg + embalagem
             custo_efetivo_total = peso * custo_efetivo_kg
