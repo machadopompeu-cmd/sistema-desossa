@@ -628,7 +628,7 @@ else:
                     "PRATA": [
                         f"R$ {compra_prata:.2f}", f"R$ {total_vendas_prata:.2f}", f"{peso_desossado_prata:.3f}",
                         f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_prata:.2f}", f"R$ {margem_r_prata:.2f}",
-                        f"{markup_prata*100:.2f}%", f"{markup_prata*100:.2f}%", f"R$ {p_medio_compra_prata:.2f}",
+                        f"{margem_p_prata*100:.2f}%", f"{markup_prata*100:.2f}%", f"R$ {p_medio_compra_prata:.2f}",
                         f"R$ {p_medio_compra_com_prata:.2f}", f"R$ {p_medio_venda_prata:.2f}"
                     ],
                     "Total": [
@@ -679,7 +679,7 @@ else:
                     "Margem Bruta (R$)": total_margem_bruta, "Rendimento %": total_rendimento
                 }])
                 
-                df_com_total = pd.concat([df_final, linha_total], ignore_index=True)
+                df_com_total = pd.concat([df_final, inline_total], ignore_index=True) if 'inline_total' in locals() else pd.concat([df_final, linha_total], ignore_index=True)
                 
                 st.dataframe(df_com_total.style.format({
                     "Peso (KG)": "{:.3f}",
@@ -700,23 +700,34 @@ else:
                     pdf.set_font("Arial", size=12)
                     
                     # --- CABEÇALHO INSTITUCIONAL NO PDF ---
+                    # 1. Desenha o fundo da tarja azul escuro
                     pdf.set_fill_color(28, 61, 90) # Azul Escuro
-                    pdf.set_text_color(255, 255, 255)
                     pdf.rect(10, 10, 190, 15, "F")
                     
+                    # 2. Escreve o nome da empresa CENTRALIZADO dentro da tarja azul
+                    pdf.set_text_color(255, 255, 255)
+                    pdf.set_font("Arial", style="B", size=12)
                     nome_formatado = st.session_state.empresa_nome.upper().encode("latin1", "replace").decode("latin1")
-                    pdf.set_xy(10, 14)
+                    # Ajuste do cursor para dentro da tarja (Y=13.5 garante centralização vertical em 15mm de altura)
+                    pdf.set_xy(10, 13.5)
                     pdf.cell(190, 8, nome_formatado, ln=1, align="C")
                     
-                    pdf.set_text_color(85, 85, 85)
+                    # 3. Escreve o endereço institucional COMPLETAMENTE abaixo da tarja azul
+                    pdf.set_text_color(85, 85, 85) # Tom cinza escuro profissional
                     pdf.set_font("Arial", size=9)
-                    endereco_txt = "Rua Paraiso, n. 514 • Pompeu/MG".encode("latin1", "replace").decode("latin1")
-                    pdf.cell(190, 8, endereco_txt, ln=1, align="C")
+                    endereco_txt = "Rua Paraiso, n. 514 - Pompeu/MG".encode("latin1", "replace").decode("latin1")
+                    # Movemos explicitamente o cursor para Y=27 (abaixo da tarja que acaba em Y=25)
+                    pdf.set_xy(10, 27)
+                    pdf.cell(190, 6, endereco_txt, ln=1, align="C")
                     
-                    pdf.set_draw_color(28, 61, 90)
+                    # 4. Desenha a linha divisória elegante abaixo do endereço
+                    pdf.set_draw_color(28, 61, 90) # Tom de azul da tarja
                     pdf.set_line_width(0.5)
-                    pdf.line(10, 31, 200, 31)
-                    pdf.ln(4)
+                    # A linha fica em Y=35, dando espaço para o endereço impresso em Y=27
+                    pdf.line(10, 35, 200, 35)
+                    
+                    # Saltamos o cursor do PDF para Y=40 para começar a imprimir os dados do lote de forma limpa
+                    pdf.set_xy(10, 40)
                     
                     # --- DADOS GERAIS DO LOTE ---
                     pdf.set_font("Arial", style="B", size=11)
@@ -757,7 +768,7 @@ else:
                     
                     pdf.ln(4)
                     
-                    # --- QUADRO DE INDICADORES (Removida a palavra 'VERDE') ---
+                    # --- QUADRO DE INDICADORES (Sem a palavra 'VERDE') ---
                     pdf.set_fill_color(146, 208, 80) # Verde #92D050
                     pdf.set_font("Arial", style="B", size=10)
                     pdf.cell(190, 7, "QUADRO DE INDICADORES", ln=1, fill=True, align="C")
@@ -804,7 +815,7 @@ else:
                     
                     pdf.ln(4)
                     
-                    # DETALHAMENTO DE CORTES (Removida a palavra 'AMARELO')
+                    # DETALHAMENTO DE CORTES (Sem a palavra 'AMARELO')
                     pdf.set_fill_color(255, 192, 0) # Amarelo #FFC000
                     pdf.set_font("Arial", style="B", size=10)
                     pdf.cell(190, 8, "DETALHAMENTO DE CORTES", ln=1, fill=True, align="C")
