@@ -66,7 +66,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --- 3. BANCO DE DADOS INTELIGENTE ---
+# --- 3. BANCO DE DADOS INTELIGENTE (ESTRUTURA DE CORTES PADRÃO) ---
 def init_db():
     conn = sqlite3.connect("desossa_db.db")
     cursor = conn.cursor()
@@ -121,7 +121,7 @@ def init_db():
         )
     """)
     
-    # Inserção automática de alguns cortes padrão se a tabela estiver vazia
+    # Carga inicial se a tabela de cortes recomendados estiver vazia
     cursor.execute("SELECT COUNT(*) FROM cortes_padrao")
     if cursor.fetchone()[0] == 0:
         cortes_iniciais = [
@@ -140,7 +140,6 @@ def init_db():
         ]
         cursor.executemany("INSERT OR IGNORE INTO cortes_padrao (tipo_desossa, nome_corte) VALUES (?, ?)", cortes_iniciais)
         
-    # ATUALIZAÇÃO AUTOMÁTICA DE COLUNAS SE JÁ EXISTIREM TABELAS ANTIGAS
     try:
         cursor.execute("ALTER TABLE empresas ADD COLUMN ativo INTEGER DEFAULT 1")
     except sqlite3.OperationalError:
@@ -186,10 +185,8 @@ if "logado" not in st.session_state:
     st.session_state.empresa_id = None
     st.session_state.empresa_nome = ""
     st.session_state.e_admin = False
-if "aba_ativa" not in st.session_state:
-    st.session_state.aba_ativa = None
 
-# --- 6. TELA DE ACESSO (LOGIN CENTRALIZADO COM CABEÇALHO AZUL) ---
+# --- 6. TELA DE ACESSO (LOGIN CENTRALIZADO) ---
 if not st.session_state.logado:
     exibir_cabecalho("RENATO FRIGOTUDO & ASSOCIADOS")
     
@@ -236,7 +233,7 @@ if not st.session_state.logado:
                     st.error("Usuário ou senha incorretos.")
 
 else:
-    # --- 7. MENU LATERAL DO USUÁRIO LOGADO & MÓDULO DE BACKUP/RESTAURAÇÃO ---
+    # --- 7. MENU LATERAL DO USUÁRIO LOGADO & MÓDULO DE BACKUP ---
     st.sidebar.markdown(f"**Ativo como:**\n{st.session_state.empresa_nome}")
     
     st.sidebar.markdown("---")
@@ -401,12 +398,12 @@ else:
                     
         elif menu == "Gerenciar Cortes Padrão":
             st.header("🥩 Configurar e Gerenciar Cortes Padrão")
-            st.info("Aqui pode acrescentar novos cortes, editar nomes de cortes cadastrados ou excluir os que não são mais utilizados.")
+            st.info("Aqui pode cadastrar novos cortes, editar nomes de cortes existentes ou excluir aqueles que não são mais úteis.")
             
             tipo_sel = st.selectbox("Selecione o Tipo de Desossa", ["QUARTO TRASEIRO", "QUARTO DIANTEIRO", "VACA CASADA", "BOI CASADO", "SUINO"])
             
-            # --- FORMULÁRIO PARA ACRESCENTAR CORTE ---
-            st.markdown("### ➕ Acrescentar Novo Corte")
+            # --- FORMULÁRIO PARA CADASTRAR (ACRESCENTAR) NOVO CORTE ---
+            st.markdown("### ➕ Cadastrar Novo Corte")
             with st.form("cadastrar_corte_padrao_form"):
                 novo_corte_nome = st.text_input("Nome do Corte (Ex: PICANHA)")
                 btn_cad_corte_p = st.form_submit_button("💾 Salvar Novo Corte")
@@ -418,26 +415,25 @@ else:
                         cursor.execute("INSERT INTO cortes_padrao (tipo_desossa, nome_corte) VALUES (?, ?)", (tipo_sel, corte_nome_formatado))
                         conn.commit()
                         conn.close()
-                        st.success(f"Corte '{corte_nome_formatado}' acrescentado com sucesso a '{tipo_sel}'!")
+                        st.success(f"Corte '{corte_nome_formatado}' cadastrado com sucesso em '{tipo_sel}'!")
                         st.rerun()
                     except sqlite3.IntegrityError:
                         st.warning("Este corte já está cadastrado para este tipo de desossa.")
             
             st.markdown("---")
-            st.subheader(f"📋 Cortes Cadastrados para {tipo_sel}")
+            st.subheader(f"📋 Cadastro de Cortes para {tipo_sel}")
             
             conn = get_connection()
             df_padroes = pd.read_sql_query(f"SELECT id, nome_corte FROM cortes_padrao WHERE tipo_desossa = '{tipo_sel}' ORDER BY nome_corte ASC", conn)
             conn.close()
             
             if df_padroes.empty:
-                st.warning("Sem cortes cadastrados para este tipo.")
+                st.warning("Nenhum corte cadastrado para este tipo de desossa.")
             else:
                 for idx_p, row_p in df_padroes.iterrows():
                     c_id = row_p['id']
                     c_nome = row_p['nome_corte']
                     
-                    # Layout limpo em colunas para visualização, edição e exclusão
                     col_txt_p, col_btn_edit_p, col_btn_del_p = st.columns([4, 1, 1])
                     
                     with col_txt_p:
@@ -453,10 +449,10 @@ else:
                             cursor.execute("DELETE FROM cortes_padrao WHERE id = ?", (c_id,))
                             conn.commit()
                             conn.close()
-                            st.success(f"Corte '{c_nome}' removido com sucesso!")
+                            st.success(f"Corte '{c_nome}' excluído com sucesso!")
                             st.rerun()
                             
-                    # Se marcar a caixinha de editar, abre o formulário de alteração de nome inline
+                    # Formulário de edição inline do corte cadastrado
                     if expandir_edit_corte:
                         with st.container():
                             with st.form(key=f"form_ed_corte_{c_id}"):
@@ -477,7 +473,7 @@ else:
                                             """, (nome_ajustado, c_id))
                                             conn.commit()
                                             conn.close()
-                                            st.success("✅ Nome do corte atualizado com sucesso!")
+                                            st.success("✅ Cadastro do corte atualizado com sucesso!")
                                             st.rerun()
                                         except sqlite3.IntegrityError:
                                             st.error("Este nome de corte já está em uso para este tipo de desossa.")
@@ -672,7 +668,7 @@ else:
                                 st.rerun()
                         st.markdown("---")
 
-                # --- CÁLCULOS E MATEMÁTICA ---
+                # --- CÁLCULOS E RENDIMENTOS ---
                 p_bruto = acao_row["peso_bruto"]
                 p_comp_kg = acao_row["preco_animal_kg"]
                 valor_total_compra = p_bruto * p_comp_kg
@@ -793,7 +789,7 @@ else:
                     "PRATA": [
                         f"R$ {compra_prata:.2f}", f"R$ {total_vendas_prata:.2f}", f"{peso_desossado_prata:.3f}",
                         f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_prata:.2f}", f"R$ {margem_r_prata:.2f}",
-                        f"{margem_p_prata*100:.2f}%", f"{markup_prata*100:.2f}%", f"R$ {p_medio_compra_prata:.2f}",
+                        f"{markup_prata*100:.2f}%", f"{markup_prata*100:.2f}%", f"R$ {p_medio_compra_prata:.2f}",
                         f"R$ {p_medio_compra_com_prata:.2f}", f"R$ {p_medio_venda_prata:.2f}"
                     ],
                     "Total": [
@@ -805,7 +801,7 @@ else:
                 }
                 st.table(pd.DataFrame(indicadores_data).set_index("INDICADORES"))
                 
-                # --- PALETA AMARELO-OURO DO MODELO NOS CORTES ---
+                # --- PALETA AMARELO-OURO ---
                 st.markdown(
                     """
                     <div style="background-color: #FFC000; padding: 8px; border-radius: 4px; margin-top: 20px; margin-bottom: 10px; color: black;">
