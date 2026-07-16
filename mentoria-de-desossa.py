@@ -83,7 +83,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --- 3. BANCO DE DADOS INTELIGENTE (CORREÇÃO AUTOMÁTICA DE COLUNAS) ---
+# --- 3. BANCO DE DADOS INTELIGENTE ---
 def init_db():
     conn = sqlite3.connect("desossa_db.db")
     cursor = conn.cursor()
@@ -109,11 +109,10 @@ def init_db():
         )
     """)
     
-    # --- AJUSTE AUTOMÁTICO: Adiciona a coluna empresa_id se ela não existir no seu banco antigo ---
+    # Ajuste automático para o banco de dados antigo
     try:
         cursor.execute("ALTER TABLE tipos_desossa ADD COLUMN empresa_id INTEGER DEFAULT NULL")
     except sqlite3.OperationalError:
-        # Se cair aqui, significa que a coluna já existe. Podemos continuar com segurança!
         pass
 
     # Tabela de Cortes Padrão
@@ -156,7 +155,7 @@ def init_db():
         )
     """)
     
-    # Se os tipos de desossa estiverem vazios, insere carga inicial padrão (Global = NULL)
+    # Carga inicial padrão de tipos de desossa
     cursor.execute("SELECT COUNT(*) FROM tipos_desossa")
     if cursor.fetchone()[0] == 0:
         tipos_iniciais = [
@@ -168,7 +167,7 @@ def init_db():
         ]
         cursor.executemany("INSERT INTO tipos_desossa (nome, empresa_id) VALUES (?, ?)", tipos_iniciais)
     
-    # Carga inicial global de cortes (Global = NULL)
+    # Carga inicial global de cortes
     cursor.execute("SELECT COUNT(*) FROM cortes_padrao")
     if cursor.fetchone()[0] == 0:
         cortes_iniciais = [
@@ -226,6 +225,9 @@ def init_form_states():
         st.session_state.input_corte_peso = 0.0
     if "input_corte_preco" not in st.session_state:
         st.session_state.input_corte_preco = 0.0
+    # Inicializador para a chave do arquivo de importação CSV
+    if "uploader_key" not in st.session_state:
+        st.session_state.uploader_key = 0
 
 def reset_form_states():
     st.session_state.input_data = datetime.date.today()
@@ -360,14 +362,110 @@ else:
     
     if st.session_state.e_admin:
         st.sidebar.markdown("### 🛠️ Menu Administrativo")
-        menu = st.sidebar.radio("Selecione a Tela:", ["Gerenciar Empresas", "Cadastrar Empresa", "Gerenciar Cadastro de Cortes"])
+        # ADICIONAMOS A OPÇÃO DE IMPORTAR CORTES NO MENU DO ADMIN
+        menu = st.sidebar.radio("Selecione a Tela:", ["Gerenciar Empresas", "Cadastrar Empresa", "Gerenciar Cadastro de Cortes", "Importar Cortes (CSV)"])
     else:
         st.sidebar.markdown("### 🥩 Menu de Operações")
         menu = st.sidebar.radio("Selecione a Tela:", ["Nova Desossa", "Histórico & Edição", "Gerenciar Cadastro de Cortes"])
 
     # ==================== TELAS EXCLUSIVAS DO ADMINISTRADOR ====================
     if st.session_state.e_admin and menu != "Gerenciar Cadastro de Cortes":
-        if menu == "Cadastrar Empresa":
+        
+        # --- NOVO REQUISITO: IMPORTAR CORTES VIA CSV PARA EMPRESAS ---
+        if menu == "Importar Cortes (CSV)":
+            st.header("📥 Importação Massiva de Cortes (CSV)")
+            st.info("Utilize esta tela para importar uma planilha de cortes diretamente para uma empresa cadastrada.")
+            
+            # Buscar lista de empresas do banco para que o admin escolha o destino
+            conn = get_connection()
+            df_empresas_list = pd.read_sql_query("SELECT id, nome FROM empresas ORDER BY nome ASC", conn)
+            conn.close()
+            
+            if df_empresas_list.empty:
+                st.warning("⚠️ Cadastre primeiro uma empresa parceira no menu para poder importar cortes para ela.")
+            else:
+                # Criar dicionário mapeando "Nome da Empresa" -> "ID da Empresa"
+                emp_options = {row['nome']: row['id'] for _, row in df_empresas_list.iterrows()}
+                # Adicionar opção "Cortes Globais (Sistema)" para o ID None
+                emp_options["Cortes Globais (Sistema)"] = None
+                
+                selected_emp_name = st.selectbox("1. Selecione a Empresa de Destino", list(emp_options.keys()))
+                target_emp_id = emp_options[selected_emp_name]
+                
+                # Buscar os tipos de desossa que essa empresa de destino pode usar
+                # Passamos o ID da empresa ou None para buscar os tipos corretos
+                tipos_empresa_destino = get_tipos_desossa(target_emp_id if target_emp_id is not None else 0)
+                
+                if not tipos_empresa_destino:
+                    st.warning("⚠️ Esta empresa não possui tipos de desossa cadastrados. Crie pelo menos um tipo antes de importar.")
+                else:
+                    selected_tipo_desossa = st.selectbox("2. Selecione o Tipo de Desossa", tipos_empresa_destino)
+                    
+                    st.markdown("### 📄 Instruções do arquivo CSV")
+                    st.write("O seu arquivo CSV deve conter uma coluna com o cabeçalho exatamente escrito: **`nome_corte`**.")
+                    
+                    # Exemplo visual
+                    exemplo_df = pd.DataFrame({"nome_corte": ["ACEM ESPECIAL", "PEITO COM OSSO", "PALETA LIMPA"]})
+                    st.dataframe(exemplo_df)
+                    
+                    # Upload do arquivo CSV com chave dinâmica para limpeza automática pós-sucesso
+                    uploaded_csv = st.file_uploader(
+                        "3. Selecione o arquivo CSV para Importar", 
+                        type=["csv"], 
+                        key=f"csv_uploader_{st.session_state.uploader_key}"
+                    )
+                    
+                    if uploaded_csv is not None:
+                        try:
+                            # Lê o CSV enviado pelo usuário
+                            df_imported = pd.read_csv(uploaded_csv)
+                            
+                            # Verifica se a coluna exigida existe no arquivo
+                            if "nome_corte" not in df_imported.columns:
+                                st.error("❌ Erro: O arquivo CSV não possui a coluna 'nome_corte'. Verifique a planilha.")
+                            else:
+                                # Limpa os dados vazios e formata para maiúsculo
+                                df_imported['nome_corte'] = df_imported['nome_corte'].dropna().astype(str).str.strip().str.upper()
+                                df_imported = df_imported[df_imported['nome_corte'] != ""]
+                                
+                                st.success(f"Planilha lida com sucesso! Encontrados {len(df_imported)} cortes prontos para importação.")
+                                st.dataframe(df_imported)
+                                
+                                if st.button("🚀 Confirmar e Importar para o Banco de Dados"):
+                                    conn = get_connection()
+                                    cursor = conn.cursor()
+                                    
+                                    sucessos = 0
+                                    duplicados = 0
+                                    
+                                    for _, row in df_imported.iterrows():
+                                        corte_nome = row['nome_corte']
+                                        try:
+                                            # Insere o corte garantindo o isolamento
+                                            cursor.execute("""
+                                                INSERT INTO cortes_padrao (tipo_desossa, nome_corte, empresa_id) 
+                                                VALUES (?, ?, ?)
+                                            """, (selected_tipo_desossa, corte_nome, target_emp_id))
+                                            sucessos += 1
+                                        except sqlite3.IntegrityError:
+                                            # Caso já exista esse corte cadastrado no mesmo tipo e empresa, ele ignora
+                                            duplicados += 1
+                                            
+                                    conn.commit()
+                                    conn.close()
+                                    
+                                    # Apresenta os resultados de forma clara
+                                    st.balloons()
+                                    st.success(f"🎉 Importação Concluída! Cortes salvos com sucesso: {sucessos} | Cortes duplicados ignorados: {duplicados}")
+                                    
+                                    # Modifica a chave do uploader para resetá-lo na tela (esvazia o arquivo enviado)
+                                    st.session_state.uploader_key += 1
+                                    st.rerun()
+                                    
+                        except Exception as e:
+                            st.error(f"❌ Ocorreu um erro ao processar o arquivo: {e}")
+        
+        elif menu == "Cadastrar Empresa":
             st.header("📝 Cadastrar Nova Empresa Parceira")
             with st.form("form_cadastro_admin"):
                 novo_nome = st.text_input("Nome Comercial")
@@ -769,7 +867,7 @@ else:
                         """, (str(ed_data), ed_tipo, ed_p_bruto, ed_preco_animal, ed_ossos, ed_quebra, ed_exsudato, id_selecionado, emp_id_ativo))
                         conn.commit()
                         conn.close()
-                        st.success("✅ Carcaça updated!")
+                        st.success("✅ Carcaça atualizada!")
                         st.rerun()
 
                 # --- GERENCIAMENTO DE CORTES ---
@@ -812,6 +910,9 @@ else:
                 
                 peso_final = p_bruto - ossos_val - quebra_val - exsudato_val
                 total_quebra = ossos_val + quebra_val + exsudato_val
+                
+                def formatar_peso_visual(v):
+                    return f"{v:.3f}" if v > 0.0 else ""
                 
                 porc_ossos = (ossos_val / p_bruto * 100) if p_bruto > 0 else 0.0
                 porc_quebra = (quebra_val / p_bruto * 100) if p_bruto > 0 else 0.0
@@ -962,7 +1063,7 @@ else:
                 
                 df_com_total = pd.concat([df_final, linha_total], ignore_index=True)
                 
-                # --- Estilização para Margem <= 0 (Fiel à cor Vermelho da Planilha com alto contraste) ---
+                # --- Estilização para Margem <= 0 (Alto Contraste) ---
                 def estilizar_margem_bruta(val):
                     try:
                         if isinstance(val, (int, float)) and val <= 0:
@@ -1061,7 +1162,7 @@ else:
                         "P. Med. Compra C/ Var.", "P. Med. Venda/KG"
                     ]
                     valores_ouro = [f"R$ {compra_ouro:.2f}", f"R$ {total_vendas_ouro:.2f}", f"{peso_desossado_ouro:.3f}", f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_ouro:.2f}", f"R$ {margem_r_ouro:.2f}", f"{margem_p_ouro*100:.2f}%", f"{markup_ouro*100:.2f}%", f"R$ {p_medio_compra_ouro:.2f}", f"R$ {p_medio_compra_com_ouro:.2f}", f"R$ {p_medio_venda_ouro:.2f}"]
-                    valores_prata = [f"R$ {compra_prata:.2f}", f"R$ {total_vendas_prata:.2f}", f"{peso_desossado_prata:.3f}", f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_prata:.2f}", f"R$ {margem_r_prata:.2f}", f"{margem_p_prata*100:.2f}%", f"{markup_prata*100:.2f}%", f"R$ {p_medio_compra_prata:.2f}", f"R$ {p_medio_compra_com_prata:.2f}", f"R$ {p_medio_venda_prata:.2f}"]
+                    valores_prata = [f"R$ {compra_prata:.2f}", f"R$ {total_vendas_prata:.2f}", f"{peso_desossado_prata:.3f}", f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_prata:.2f}", f"R$ {margem_r_prata:.2f}", f"{markup_prata*100:.2f}%", f"{markup_prata*100:.2f}%", f"R$ {p_medio_compra_prata:.2f}", f"R$ {p_medio_compra_com_prata:.2f}", f"R$ {p_medio_venda_prata:.2f}"]
                     valores_totais = [f"R$ {valor_total_compra:.2f}", f"R$ {total_vendas_total:.2f}", f"{peso_desossado_total:.3f}", f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_geral:.2f}", f"R$ {margem_r_total:.2f}", f"{st_margem_p_total*100:.2f}%", f"{markup_total*100:.2f}%", f"R$ {p_medio_compra_total:.2f}", f"R$ {p_medio_compra_com_total:.2f}", f"R$ {p_medio_venda_total:.2f}"]
                     
                     for idx_ind, nome in enumerate(indicadores_nomes):
@@ -1101,7 +1202,7 @@ else:
                         pdf.cell(18, 5, f"R$ {r_corte['Custo por KG']:.2f}", border=1, align="C")
                         pdf.cell(22, 5, f"R$ {r_corte['Custo Total']:.2f}", border=1, align="C")
                         
-                        # DESTAQUE DE MARGEM NEGATIVA NO PDF (Fiel à Planilha - Fundo Vermelho e Texto Branco)
+                        # DESTAQUE DE MARGEM NEGATIVA NO PDF
                         if marg_val <= 0:
                             pdf.set_fill_color(239, 68, 68) 
                             pdf.set_text_color(255, 255, 255) 
