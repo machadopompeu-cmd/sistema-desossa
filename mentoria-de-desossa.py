@@ -180,7 +180,7 @@ elif menu == "Histórico & Edição":
                 """, (str(ed_data), ed_tipo, ed_p_bruto, ed_preco_animal, ed_ossos, ed_quebra, ed_exsudato, id_selecionado))
                 conn.commit()
                 conn.close()
-                st.success("✅ Dados da carcaça updated com sucesso!")
+                st.success("✅ Dados da carcaça atualizados com sucesso!")
                 st.rerun()
 
         # --- GERENCIAMENTO INDIVIDUAL DE CADA CORTE ---
@@ -223,7 +223,7 @@ elif menu == "Histórico & Edição":
         p_comp_kg = acao_row["preco_animal_kg"]
         valor_total_compra = p_bruto * p_comp_kg
         
-        # Deduções e Apuração do Animal
+        # Deduções e Apuração do Lote
         ossos_val = acao_row["ossos_muxiba"] if acao_row["ossos_muxiba"] else 0.0
         quebra_val = acao_row["quebra_nao_identificada"] if acao_row["quebra_nao_identificada"] else 0.0
         exsudato_val = acao_row["exsudato_escorrimento"] if acao_row["exsudato_escorrimento"] else 0.0
@@ -231,7 +231,7 @@ elif menu == "Histórico & Edição":
         peso_final = p_bruto - ossos_val - quebra_val - exsudato_val
         total_quebra = ossos_val + quebra_val + exsudato_val
         
-        # --- TABELA DE APURAÇÃO DO ANIMAL (REPLICANDO FIELMENTE A IMAGEM ANEXA) ---
+        # --- TABELA DE APURAÇÃO DO ANIMAL (REPLICANDO FIELMENTE A PRIMEIRA IMAGEM) ---
         st.subheader("📊 Apuração Geral do Lote")
         
         apuracao_data = {
@@ -269,7 +269,6 @@ elif menu == "Histórico & Edição":
             ]
         }
         
-        # Exibição da tabela de apuração
         st.table(pd.DataFrame(apuracao_data).set_index("Apuração do Lote"))
 
         # --- CÁLCULO DOS INDICADORES FINANCEIROS ---
@@ -295,7 +294,7 @@ elif menu == "Histórico & Edição":
             p_venda = row['preco_venda']
             p_custo_kg = p_venda * coeficiente
             
-            # Ajuste de fórmula da planilha original (linha 0 bisteca x outras linhas)
+            # Ajuste exato das fórmulas do Excel (Bisteca multiplica pelo preço; outros pelo peso)
             if i == 0:
                 embalagem = 0.0003 * p_venda
             else:
@@ -338,7 +337,7 @@ elif menu == "Histórico & Edição":
         p_medio_venda_prata = total_vendas_prata / peso_desossado_prata if peso_desossado_prata > 0 else 0
         p_medio_venda_total = total_vendas_total / peso_desossado_total if peso_desossado_total > 0 else 0
         
-        # --- EXIBIÇÃO DA TABELA DE INDICADORES (FORMATADO COMO PERCENTUAL EXATO CONFORME A IMAGEM) ---
+        # --- EXIBIÇÃO DO QUADRO DE INDICADORES (COEFICIENTE EM DECIMAL FORMATADO) ---
         st.subheader(f"📊 Quadro de Indicadores - Lote #{id_selecionado}")
         
         indicadores_data = {
@@ -357,19 +356,19 @@ elif menu == "Histórico & Edição":
             ],
             "OURO": [
                 f"R$ {compra_ouro:.2f}", f"R$ {total_vendas_ouro:.2f}", f"{peso_desossado_ouro:.3f}",
-                f"{coeficiente*100:.2f}%", f"R$ {custo_efetivo_total_ouro:.2f}", f"R$ {margem_r_ouro:.2f}",
+                f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_ouro:.2f}", f"R$ {margem_r_ouro:.2f}",
                 f"{margem_p_ouro*100:.2f}%", f"{markup_ouro*100:.2f}%", f"R$ {p_medio_compra_ouro:.2f}",
                 f"R$ {p_medio_compra_com_ouro:.2f}", f"R$ {p_medio_venda_ouro:.2f}"
             ],
             "PRATA": [
                 f"R$ {compra_prata:.2f}", f"R$ {total_vendas_prata:.2f}", f"{peso_desossado_prata:.3f}",
-                f"{coeficiente*100:.2f}%", f"R$ {custo_efetivo_total_prata:.2f}", f"R$ {margem_r_prata:.2f}",
+                f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_prata:.2f}", f"R$ {margem_r_prata:.2f}",
                 f"{margem_p_prata*100:.2f}%", f"{markup_prata*100:.2f}%", f"R$ {p_medio_compra_prata:.2f}",
                 f"R$ {p_medio_compra_com_prata:.2f}", f"R$ {p_medio_venda_prata:.2f}"
             ],
             "Total": [
                 f"R$ {valor_total_compra:.2f}", f"R$ {total_vendas_total:.2f}", f"{peso_desossado_total:.3f}",
-                f"{coeficiente*100:.2f}%", f"R$ {custo_efetivo_total_geral:.2f}", f"R$ {margem_r_total:.2f}",
+                f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_geral:.2f}", f"R$ {margem_r_total:.2f}",
                 f"{margem_p_total*100:.2f}%", f"{markup_total*100:.2f}%", f"R$ {p_medio_compra_total:.2f}",
                 f"R$ {p_medio_compra_com_total:.2f}", f"R$ {p_medio_venda_total:.2f}"
             ]
@@ -387,7 +386,7 @@ elif menu == "Histórico & Edição":
         df_cortes_calc["Lucro Bruto"] = df_cortes_calc["Valor Total Venda"] - df_cortes_calc["Preço de Custo Total"]
         df_cortes_calc["Rendimento %"] = (df_cortes_calc["peso"] / p_bruto) * 100 if p_bruto > 0 else 0
         
-        # Renomeação de colunas
+        # Renomeação de colunas para exibição amigável
         df_formatado = df_cortes_calc.rename(columns={
             "nome_corte": "Corte",
             "qualidade": "Qualidade",
@@ -400,20 +399,20 @@ elif menu == "Histórico & Edição":
             "Rendimento %": "Rendimento %"
         })
         
-        # Seleção das colunas de exibição
+        # Filtrar as colunas corretas para exibição
         cols_exibicao = ["Corte", "Qualidade", "Peso (KG)", "Preço Venda (R$/KG)", "Faturamento Total", "Custo por KG", "Custo Total", "Margem Bruta (R$)", "Rendimento %"]
         df_final = df_formatado[cols_exibicao].copy()
         
-        # --- CÁLCULO DA SOMA PARA AS COLUNAS NUMÉRICAS ---
+        # --- CÁLCULO DA SOMA DAS COLUNAS NUMÉRICAS ---
         total_peso = df_final["Peso (KG)"].sum()
         total_faturamento = df_final["Faturamento Total"].sum()
         total_custo_total = df_final["Custo Total"].sum()
         total_margem_bruta = df_final["Margem Bruta (R$)"].sum()
         total_rendimento = df_final["Rendimento %"].sum()
         
-        # Criando a linha de total
+        # Criar linha de Totais de forma limpa
         linha_total = pd.DataFrame([{
-            "Corte": "TOTAL",
+            "Corte": "TOTAL SOMA",
             "Qualidade": "",
             "Peso (KG)": total_peso,
             "Preço Venda (R$/KG)": None,
@@ -424,10 +423,9 @@ elif menu == "Histórico & Edição":
             "Rendimento %": total_rendimento
         }])
         
-        # Juntando a linha de total ao final da tabela
         df_com_total = pd.concat([df_final, linha_total], ignore_index=True)
         
-        # Formatando a tabela com a nova linha de totais
+        # Renderização visual com tratamento das colunas de preços por KG no Total
         st.dataframe(df_com_total.style.format({
             "Peso (KG)": "{:.3f}",
             "Preço Venda (R$/KG)": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
