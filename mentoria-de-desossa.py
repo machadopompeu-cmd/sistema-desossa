@@ -29,7 +29,7 @@ def init_db():
         cursor.execute("ALTER TABLE empresas ADD COLUMN ativo INTEGER DEFAULT 1")
         conn.commit()
     except sqlite3.OperationalError:
-        # Se der erro, é porque a coluna 'ativo' já existia. Tudo bem!
+        # Se a coluna já existir, o SQLite retorna erro e nós apenas ignoramos
         pass
     
     # Tabela de desossa vinculada à empresa dona dos dados
@@ -73,7 +73,7 @@ def exibir_cabecalho(nome_empresa="RENATO FRIGOTUDO & ASSOCIADOS"):
     col_logo, col_info = st.columns([1, 4])
     
     with col_logo:
-        # Carrega a logo se ela existir no GitHub/Pasta local
+        # Carrega a logo se ela existir no GitHub ou pasta local
         if os.path.exists("logo_renato.png"):
             st.image("logo_renato.png", width=110)
         else:
@@ -100,11 +100,11 @@ if "logado" not in st.session_state:
     st.session_state.logado = False
     st.session_state.empresa_id = None
     st.session_state.empresa_nome = ""
-    st.session_state.e_admin = False # Define se o utilizador atual é o administrador
+    st.session_state.e_admin = False # Define se o usuário atual é o administrador
 
 # --- 5. TELA DE ACESSO (LOGIN CENTRALIZADO COM CABEÇALHO) ---
 if not st.session_state.logado:
-    # Exibe o cabeçalho oficial diretamente na tela de login!
+    # Exibe o cabeçalho oficial diretamente na tela de login
     exibir_cabecalho("RENATO FRIGOTUDO & ASSOCIADOS")
     
     st.title("🔒 Portal de Acesso - Gestão de Desossa")
@@ -125,13 +125,12 @@ if not st.session_state.logado:
                 st.session_state.empresa_id = 0
                 st.session_state.empresa_nome = "Administrador Geral"
                 st.session_state.e_admin = True
-                st.success("Acesso administrativo concedido!")
+                st.success("Acesso administrativo concedido com sucesso!")
                 st.rerun()
             else:
                 # 2. Se não for admin, consulta as empresas cadastradas no banco de dados
                 conn = get_connection()
                 cursor = conn.cursor()
-                # Busca também trazendo o status 'ativo' da empresa
                 cursor.execute("SELECT id, nome, ativo FROM empresas WHERE LOWER(login) = ? AND senha = ?", (login_formatado, campo_senha))
                 user = cursor.fetchone()
                 conn.close()
@@ -139,9 +138,9 @@ if not st.session_state.logado:
                 if user:
                     empresa_id, empresa_nome, status_ativo = user
                     
-                    # Se a empresa estiver inativa (ativo == 0), bloqueia o login imediatamente!
+                    # Se a empresa estiver inativa (ativo == 0), bloqueia o login imediatamente
                     if status_ativo == 0:
-                        st.error("🚫 O acesso da sua empresa está suspenso temporariamente. Por favor, entre em contacto com o Administrador do sistema.")
+                        st.error("🚫 O acesso da sua empresa está suspenso temporariamente. Por favor, entre em contato com o Administrador do sistema.")
                     else:
                         st.session_state.logado = True
                         st.session_state.empresa_id = empresa_id
@@ -162,7 +161,7 @@ else:
         st.session_state.e_admin = False
         st.rerun()
 
-    # Cabeçalho integrado de acordo com o utilizador ativo
+    # Cabeçalho integrado de acordo com o usuário ativo
     if st.session_state.e_admin:
         exibir_cabecalho("PAINEL ADMINISTRATIVO")
     else:
@@ -177,7 +176,7 @@ else:
     # ==================== TELAS EXCLUSIVAS DO ADMINISTRADOR ====================
     if st.session_state.e_admin:
         if menu == "Cadastrar Empresa":
-            st.header("📝 Registar Nova Empresa Parceira")
+            st.header("📝 Cadastrar Nova Empresa Parceira")
             st.info("Utilize este formulário oficial para cadastrar novos frigoríficos e marcas parceiras no sistema.")
             
             with st.form("form_cadastro_admin"):
@@ -188,9 +187,8 @@ else:
                 
                 if btn_salvar_cadastro:
                     if not novo_nome or not novo_login or not nova_senha:
-                        st.error("Preencha todos os campos para efetuar o registo!")
+                        st.error("Preencha todos os campos para efetuar o cadastro!")
                     else:
-                        # Força o salvamento do usuário em formato minúsculo e sem espaços nas pontas
                         login_salvar = novo_login.strip().lower()
                         try:
                             conn = get_connection()
@@ -203,27 +201,27 @@ else:
                             st.error("Este nome de usuário já está sendo usado por outra empresa.")
                             
         elif menu == "Gerenciar Empresas":
-            st.header("🏢 Painel de Controlo e Restrição de Empresas")
-            st.info("Aqui pode visualizar as empresas parceiras e gerenciar as permissões de acesso (Ativar / Bloquear).")
+            st.header("🏢 Painel de Controle e Restrição de Empresas")
+            st.info("Aqui você pode visualizar as empresas parceiras, gerenciar as permissões de acesso (Ativar / Bloquear) e editar suas informações.")
             
             conn = get_connection()
-            # Trazemos as empresas ordenadas pelo nome
-            df_empresas = pd.read_sql_query("SELECT id, nome, login, ativo FROM empresas ORDER BY nome ASC", conn)
+            df_empresas = pd.read_sql_query("SELECT id, nome, login, senha, ativo FROM empresas ORDER BY nome ASC", conn)
             conn.close()
             
             if df_empresas.empty:
                 st.warning("Ainda não existem empresas parceiras cadastradas no sistema.")
             else:
                 st.markdown("---")
-                # Exibimos cada empresa como um "Card" intuitivo com botão de controle
+                # Exibimos cada empresa como um "Card" intuitivo com botões de controle e edição
                 for index, row in df_empresas.iterrows():
                     emp_id = row['id']
                     emp_nome = row['nome']
                     emp_login = row['login']
+                    emp_senha = row['senha']
                     emp_status = row['ativo']
                     
                     # Criação de colunas para layout limpo
-                    col_info_emp, col_status_badge, col_btn_action = st.columns([3, 1, 1])
+                    col_info_emp, col_status_badge, col_btn_action, col_btn_edit = st.columns([3, 1, 1, 1])
                     
                     with col_info_emp:
                         st.markdown(f"**🏢 {emp_nome.upper()}** (Usuário: `{emp_login}`)")
@@ -232,11 +230,10 @@ else:
                         if emp_status == 1:
                             st.markdown("🟢 **ATIVO**")
                         else:
-                            st.markdown("🔴 **BLOQUEADO (Acesso Restrito)**")
+                            st.markdown("🔴 **BLOQUEADO**")
                     
                     with col_btn_action:
                         if emp_status == 1:
-                            # Se está ativo, mostra botão para restringir
                             if st.button("🚫 Bloquear", key=f"bloq_{emp_id}"):
                                 conn = get_connection()
                                 cursor = conn.cursor()
@@ -246,7 +243,6 @@ else:
                                 st.success(f"Acesso de {emp_nome} bloqueado!")
                                 st.rerun()
                         else:
-                            # Se está bloqueado, mostra botão para ativar
                             if st.button("✅ Ativar", key=f"ativ_{emp_id}"):
                                 conn = get_connection()
                                 cursor = conn.cursor()
@@ -256,6 +252,41 @@ else:
                                 st.success(f"Acesso de {emp_nome} liberado!")
                                 st.rerun()
                                 
+                    with col_btn_edit:
+                        # Botão para expandir/ocultar o painel de edição desta empresa específica
+                        expandir_edicao = st.checkbox("✏️ Editar", key=f"expand_edit_{emp_id}")
+
+                    # Se o botão de edição correspondente for clicado, exibe o formulário de edição
+                    if expandir_edicao:
+                        with st.container():
+                            st.markdown(f"##### Editar Informações - {emp_nome.upper()}")
+                            with st.form(key=f"form_edicao_emp_{emp_id}"):
+                                edit_nome = st.text_input("Nome Comercial", value=emp_nome)
+                                edit_login = st.text_input("Nome de Usuário (Login)", value=emp_login)
+                                edit_senha = st.text_input("Senha de Acesso", value=emp_senha)
+                                
+                                btn_confirmar_edicao = st.form_submit_button("💾 Confirmar Alterações")
+                                
+                                if btn_confirmar_edicao:
+                                    if not edit_nome or not edit_login or not edit_senha:
+                                        st.error("Nenhum campo pode ficar em branco!")
+                                    else:
+                                        login_ajustado = edit_login.strip().lower()
+                                        try:
+                                            conn = get_connection()
+                                            cursor = conn.cursor()
+                                            cursor.execute("""
+                                                UPDATE empresas 
+                                                SET nome = ?, login = ?, senha = ?
+                                                WHERE id = ?
+                                            """, (edit_nome, login_ajustado, edit_senha, emp_id))
+                                            conn.commit()
+                                            conn.close()
+                                            st.success("✅ Dados da empresa atualizados com sucesso!")
+                                            st.rerun()
+                                        except sqlite3.IntegrityError:
+                                            st.error("Este nome de usuário já está sendo usado por outra empresa.")
+                                            
                     st.markdown("<hr style='margin: 4px 0; border-top: 1px dashed #e0e0e0;'>", unsafe_allow_html=True)
 
     # ==================== TELAS DAS EMPRESAS PARCEIRAS ====================
@@ -338,7 +369,7 @@ else:
                     st.session_state.cortes_temp = []
                     st.rerun()
 
-        # ==================== TELA: HISTÓRICO & EDICÃO ====================
+        # ==================== TELA: HISTÓRICO & EDIÇÃO ====================
         elif menu == "Histórico & Edição":
             st.header("📂 Histórico & Edição de Desossas")
             
@@ -414,7 +445,7 @@ else:
                                 """, (c_qual, c_peso, c_preco, corte_row["id"]))
                                 conn.commit()
                                 conn.close()
-                                st.success(f"Corte {corte_row['nome_corte']} updated!")
+                                st.success(f"Corte {corte_row['nome_corte']} atualizado com sucesso!")
                                 st.rerun()
                                 
                             if col_btn_excluir.button("🗑️ Excluir", key=f"del_c_{corte_row['id']}"):
@@ -425,7 +456,7 @@ else:
                                 conn.close()
                                 st.warning(f"Corte {corte_row['nome_corte']} removido!")
                                 st.rerun()
-                    st.markdown("---")
+                        st.markdown("---")
 
                 # --- CÁLCULOS E MATEMÁTICA ---
                 p_bruto = acao_row["peso_bruto"]
@@ -673,7 +704,7 @@ else:
                     valores_prata = [
                         f"R$ {compra_prata:.2f}", f"R$ {total_vendas_prata:.2f}", f"{peso_desossado_prata:.3f}",
                         f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_prata:.2f}", f"R$ {margem_r_prata:.2f}",
-                        f"{margem_p_prata*100:.2f}%", f"{markup_prata*100:.2f}%", f"R$ {p_medio_compra_prata:.2f}",
+                        f"{markup_prata*100:.2f}%", f"{markup_prata*100:.2f}%", f"R$ {p_medio_compra_prata:.2f}",
                         f"R$ {p_medio_compra_com_prata:.2f}", f"R$ {p_medio_venda_prata:.2f}"
                     ]
                     valores_totais = [
