@@ -4,8 +4,6 @@ import sqlite3
 import datetime
 import os
 from fpdf import FPDF
-# LINHA DE CORREÇÃO TEMPORÁRIA:
-if os.path.exists("desossa_db.db"): os.remove("desossa_db.db")
 
 # --- 1. CONFIGURAÇÃO VISUAL DA PÁGINA ---
 st.set_page_config(page_title="Gestão de Desossa - Renato Frigotudo", layout="wide")
