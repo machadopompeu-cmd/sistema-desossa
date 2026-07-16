@@ -82,7 +82,7 @@ def init_db():
         )
     """)
     
-    # Tabela de Cortes Padrão (Adaptada para aceitar empresa_id para cortes customizados)
+    # Tabela de Cortes Padrão (Com suporte a empresa_id para cortes customizados)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS cortes_padrao (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -122,7 +122,7 @@ def init_db():
         )
     """)
     
-    # Se a tabela cortes_padrao estiver completamente vazia, insere a carga padrão do sistema
+    # Se a tabela cortes_padrao estiver vazia, insere a carga inicial global do sistema
     cursor.execute("SELECT COUNT(*) FROM cortes_padrao")
     if cursor.fetchone()[0] == 0:
         cortes_iniciais = [
@@ -141,7 +141,7 @@ def init_db():
         ]
         cursor.executemany("INSERT OR IGNORE INTO cortes_padrao (tipo_desossa, nome_corte, empresa_id) VALUES (?, ?, ?)", cortes_iniciais)
         
-    # Executa alterações automáticas caso colunas antigas estejam em falta
+    # Executa atualizações incrementais automáticas se necessário
     try:
         cursor.execute("ALTER TABLE empresas ADD COLUMN ativo INTEGER DEFAULT 1")
     except sqlite3.OperationalError:
@@ -283,11 +283,19 @@ else:
     else:
         exibir_cabecalho(st.session_state.empresa_nome)
     
-    # Definição do menu lateral baseado nas permissões (Com a tela de Cortes agora liberada para todos!)
+    # ALTERAÇÃO CHAVE DE UX: Usar st.sidebar.radio em vez de selectbox para que TODAS as opções fiquem visíveis imediatamente!
     if st.session_state.e_admin:
-        menu = st.sidebar.selectbox("Menu Administrativo", ["Gerenciar Empresas", "Cadastrar Empresa", "Gerenciar Cadastro de Cortes"])
+        st.sidebar.markdown("### 🛠️ Menu Administrativo")
+        menu = st.sidebar.radio(
+            "Selecione a Tela:",
+            ["Gerenciar Empresas", "Cadastrar Empresa", "Gerenciar Cadastro de Cortes"]
+        )
     else:
-        menu = st.sidebar.selectbox("Menu de Operações", ["Nova Desossa", "Histórico & Edição", "Gerenciar Cadastro de Cortes"])
+        st.sidebar.markdown("### 🥩 Menu de Operações")
+        menu = st.sidebar.radio(
+            "Selecione a Tela:",
+            ["Nova Desossa", "Histórico & Edição", "Gerenciar Cadastro de Cortes"]
+        )
 
     # ==================== TELAS EXCLUSIVAS DO ADMINISTRADOR ====================
     if st.session_state.e_admin and menu != "Gerenciar Cadastro de Cortes":
@@ -395,7 +403,7 @@ else:
                                             """, (edit_nome, login_ajustado, edit_senha, emp_id))
                                             conn.commit()
                                             conn.close()
-                                            st.success("✅ Dados da empresa atualizados com sucesso!")
+                                            st.success("✅ Dados da empresa updated com sucesso!")
                                             st.rerun()
                                         except sqlite3.IntegrityError:
                                             st.error("Este nome de usuário já está sendo usado por outra empresa.")
@@ -409,7 +417,7 @@ else:
         
         tipo_sel = st.selectbox("Selecione o Tipo de Desossa", ["QUARTO TRASEIRO", "QUARTO DIANTEIRO", "VACA CASADA", "BOI CASADO", "SUINO"])
         
-        # Define o ID de dono do corte (se for admin, salva como global [None]. Se for empresa parceira, vincula à conta logada)
+        # Define o dono do corte (se admin salva como global [None], se empresa parceira vincula à conta ativa)
         dono_id = None if st.session_state.e_admin else st.session_state.empresa_id
         
         # --- 1. FORMULÁRIO DE CADASTRO (CRIAR) ---
@@ -436,7 +444,6 @@ else:
         st.markdown("---")
         st.subheader(f"📋 Cadastro de Cortes para {tipo_sel}")
         
-        # Busca apenas os cortes visíveis para esta empresa (Os globais [None] + os dela!)
         conn = get_connection()
         if st.session_state.e_admin:
             # O administrador global gerencia os cortes padrões do sistema (empresa_id IS NULL)
@@ -447,7 +454,7 @@ else:
                 ORDER BY nome_corte ASC
             """, conn)
         else:
-            # A empresa gerencia apenas os cortes criados por ela mesma (para proteger a base global)
+            # A empresa gerencia apenas os cortes criados por ela mesma para proteger a base global
             df_padroes = pd.read_sql_query(f"""
                 SELECT id, nome_corte, empresa_id 
                 FROM cortes_padrao 
@@ -532,7 +539,7 @@ else:
 
             st.subheader("🥩 Cortes do Lote")
             
-            # Recupera de forma inteligente os cortes recomendados do sistema (None) + os criados por esta empresa específica!
+            # Carrega tanto os cortes globais (NULL) quanto os cadastrados por esta empresa logada!
             conn = get_connection()
             df_rec_cortes = pd.read_sql_query(f"""
                 SELECT nome_corte 
@@ -550,7 +557,6 @@ else:
             with st.form("adicionar_corte"):
                 col_c1, col_c2, col_c3, col_c4 = st.columns(4)
                 
-                # Se houver cortes disponíveis, mostra na selectbox, mas com campo para digitação caso queira escrever na hora!
                 if lista_cortes_disponiveis:
                     nome_corte = col_c1.selectbox("Corte Cadastrado", lista_cortes_disponiveis)
                 else:
@@ -666,7 +672,7 @@ else:
                         """, (str(ed_data), ed_tipo, ed_p_bruto, ed_preco_animal, ed_ossos, ed_quebra, ed_exsudato, id_selecionado, st.session_state.empresa_id))
                         conn.commit()
                         conn.close()
-                        st.success("✅ Dados da carcaça updated com sucesso!")
+                        st.success("✅ Dados da carcaça atualizados com sucesso!")
                         st.rerun()
 
                 # --- GERENCIAMENTO INDIVIDUAL DE CADA CORTE ---
@@ -716,6 +722,9 @@ else:
                 
                 peso_final = p_bruto - ossos_val - quebra_val - exsudato_val
                 total_quebra = ossos_val + quebra_val + exsudato_val
+                
+                def formatar_peso_visual(v):
+                    return f"{v:.3f}" if v > 0.0 else ""
                 
                 # --- TABELA DE APURAÇÃO GERAL ---
                 st.subheader("📊 Apuração Geral do Lote")
