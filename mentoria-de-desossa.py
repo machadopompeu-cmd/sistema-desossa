@@ -56,7 +56,6 @@ if menu == "Nova Desossa":
     col1, col2 = st.columns(2)
     with col1:
         data_input = st.date_input("Data da Ação", datetime.date.today())
-        # Formatando para exibição em formato BR
         data_acao_br = data_input.strftime("%d/%m/%Y")
         st.write(f"Data selecionada: **{data_acao_br}**")
         
@@ -91,10 +90,17 @@ if menu == "Nova Desossa":
             })
             st.success(f"Corte {nome_corte.upper()} adicionado!")
 
+    # Se houver cortes adicionados temporariamente, exibe-os com botões individuais de exclusão
     if st.session_state.cortes_temp:
-        df_temp = pd.DataFrame(st.session_state.cortes_temp)
-        st.dataframe(df_temp.style.format({"peso": "{:.3f}", "preco_venda": "R$ {:.2f}"}))
-        if st.button("Limpar Lista de Cortes"):
+        st.markdown("##### Gerenciar Cortes Adicionados:")
+        for idx, c in enumerate(st.session_state.cortes_temp):
+            col_ver, col_btn = st.columns([5, 1])
+            col_ver.write(f"**{c['nome_corte']}** ({c['qualidade']}) - {c['peso']:.3f} KG - R$ {c['preco_venda']:.2f}/KG")
+            if col_btn.button("❌ Remover", key=f"rem_temp_{idx}"):
+                st.session_state.cortes_temp.pop(idx)
+                st.rerun()
+                
+        if st.button("Limpar Todos os Cortes"):
             st.session_state.cortes_temp = []
             st.rerun()
 
@@ -104,7 +110,6 @@ if menu == "Nova Desossa":
         else:
             conn = get_connection()
             cursor = conn.cursor()
-            # Salvamos no banco como string YYYY-MM-DD
             cursor.execute("""
                 INSERT INTO acoes (data_acao, tipo_animal, peso_bruto, preco_animal_kg, ossos_muxiba, quebra_nao_identificada, exsudato_escorrimento)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -133,7 +138,6 @@ elif menu == "Histórico & Edição":
     if df_acoes.empty:
         st.warning("Nenhum registro de desossa encontrado no banco de dados.")
     else:
-        # Criando as opções de seleção exibindo a data formatada em DD/MM/AAAA
         opcoes_map = {}
         opcoes_lista = []
         for idx, row in df_acoes.iterrows():
@@ -146,15 +150,15 @@ elif menu == "Histórico & Edição":
         selecionado = st.selectbox("Selecione um lote para visualizar, editar ou imprimir:", opcoes_lista)
         id_selecionado = opcoes_map[selecionado]
         
-        # Obter dados atuais do banco
+        # Obter dados do banco
         acao_row = df_acoes[df_acoes["id"] == id_selecionado].iloc[0]
         conn = get_connection()
         df_cortes = pd.read_sql_query(f"SELECT * FROM cortes WHERE acao_id = {id_selecionado}", conn)
         conn.close()
         
-        # --- SEÇÃO DE EDIÇÃO DOS DADOS ---
-        with st.expander("📝 EDITAR DADOS DESTE LOTE"):
-            st.warning("Altere os dados abaixo e clique em 'Atualizar Dados' para salvar as modificações.")
+        # --- SEÇÃO DE EDIÇÃO DA CARCAÇA ---
+        with st.expander("📝 EDITAR DADOS GERAIS DA CARCAÇA"):
+            st.warning("Altere os dados da carcaça abaixo e clique em 'Atualizar Dados' para salvar.")
             col_ed1, col_ed2 = st.columns(2)
             with col_ed1:
                 ed_data = st.date_input("Editar Data", datetime.datetime.strptime(acao_row["data_acao"], "%Y-%m-%d").date(), key="ed_data")
@@ -165,86 +169,124 @@ elif menu == "Histórico & Edição":
                 ed_ossos = st.number_input("Editar Ossos/Muxiba (KG)", value=float(acao_row["ossos_muxiba"]), step=0.001, format="%.3f", key="ed_ossos")
                 ed_quebra = st.number_input("Editar Quebra Não Identificada (KG)", value=float(acao_row["quebra_nao_identificada"]), step=0.001, format="%.3f", key="ed_quebra")
                 ed_exsudato = st.number_input("Editar Exsudato/Escorrimento (KG)", value=float(acao_row["exsudato_escorrimento"]), step=0.001, format="%.3f", key="ed_exsudato")
-            
-            st.markdown("##### Editar Cortes Associados")
-            cortes_editados_lista = []
-            for i, corte_row in df_cortes.iterrows():
-                st.markdown(f"**Corte: {corte_row['nome_corte']}**")
-                c_col1, c_col2, c_col3 = st.columns(3)
-                c_qual = c_col1.selectbox("Qualidade", ["OURO", "PRATA"], index=["OURO", "PRATA"].index(corte_row["qualidade"]), key=f"c_qual_{corte_row['id']}")
-                c_peso = c_col2.number_input("Peso (KG)", value=float(corte_row["peso"]), step=0.001, format="%.3f", key=f"c_peso_{corte_row['id']}")
-                c_preco = c_col3.number_input("Preço de Venda (R$/KG)", value=float(corte_row["preco_venda"]), step=0.01, key=f"c_preco_{corte_row['id']}")
-                cortes_editados_lista.append({
-                    "id": corte_row["id"],
-                    "nome_corte": corte_row["nome_corte"],
-                    "qualidade": c_qual,
-                    "peso": c_peso,
-                    "preco_venda": c_preco
-                })
                 
-            if st.button("💾 CONFIRMAR E SALVAR EDIÇÃO"):
+            if st.button("💾 CONFIRMAR ATUALIZAÇÃO DA CARCAÇA"):
                 conn = get_connection()
                 cursor = conn.cursor()
-                # Atualizar tabela principal
                 cursor.execute("""
                     UPDATE acoes 
                     SET data_acao = ?, tipo_animal = ?, peso_bruto = ?, preco_animal_kg = ?, ossos_muxiba = ?, quebra_nao_identificada = ?, exsudato_escorrimento = ?
                     WHERE id = ?
                 """, (str(ed_data), ed_tipo, ed_p_bruto, ed_preco_animal, ed_ossos, ed_quebra, ed_exsudato, id_selecionado))
-                
-                # Atualizar cortes
-                for corte_edt in cortes_editados_lista:
-                    cursor.execute("""
-                        UPDATE cortes 
-                        SET qualidade = ?, peso = ?, preco_venda = ?
-                        WHERE id = ?
-                    """, (corte_edt["qualidade"], corte_edt["peso"], corte_edt["preco_venda"], corte_edt["id"]))
-                
                 conn.commit()
                 conn.close()
-                st.success("✅ Lote e cortes atualizados com sucesso no banco de dados!")
+                st.success("✅ Dados da carcaça atualizados com sucesso!")
                 st.rerun()
 
-        # --- RE-CÁLCULO DOS INDICADORES CONFORME A PLANILHA REVISADA ---
+        # --- GERENCIAMENTO INDIVIDUAL DE CADA CORTE (EDIÇÃO & EXCLUSÃO) ---
+        with st.expander("🥩 GERENCIAR CORTES INDIVIDUALMENTE"):
+            st.info("Aqui pode Editar ou Excluir cada corte deste lote de forma individual:")
+            for i, corte_row in df_cortes.iterrows():
+                # Criamos um container visual para cada corte
+                with st.container():
+                    st.markdown(f"##### Corte: **{corte_row['nome_corte']}**")
+                    col_c1, col_c2, col_c3, col_btn_salvar, col_btn_excluir = st.columns([2, 2, 2, 1, 1])
+                    
+                    c_qual = col_c1.selectbox("Qualidade", ["OURO", "PRATA"], index=["OURO", "PRATA"].index(corte_row["qualidade"]), key=f"c_qual_{corte_row['id']}")
+                    c_peso = col_c2.number_input("Peso (KG)", value=float(corte_row["peso"]), step=0.001, format="%.3f", key=f"c_peso_{corte_row['id']}")
+                    c_preco = col_c3.number_input("Preço (R$/KG)", value=float(corte_row["preco_venda"]), step=0.01, key=f"c_preco_{corte_row['id']}")
+                    
+                    if col_btn_salvar.button("💾 Salvar", key=f"save_c_{corte_row['id']}"):
+                        conn = get_connection()
+                        cursor = conn.cursor()
+                        cursor.execute("""
+                            UPDATE cortes 
+                            SET qualidade = ?, peso = ?, preco_venda = ?
+                            WHERE id = ?
+                        """, (c_qual, c_peso, c_preco, corte_row["id"]))
+                        conn.commit()
+                        conn.close()
+                        st.success(f"Corte {corte_row['nome_corte']} atualizado com sucesso!")
+                        st.rerun()
+                        
+                    if col_btn_excluir.button("🗑️ Excluir", key=f"del_c_{corte_row['id']}"):
+                        conn = get_connection()
+                        cursor = conn.cursor()
+                        cursor.execute("DELETE FROM cortes WHERE id = ?", (corte_row["id"],))
+                        conn.commit()
+                        conn.close()
+                        st.warning(f"Corte {corte_row['nome_corte']} removido!")
+                        st.rerun()
+                st.markdown("---")
+
+        # --- MATEMÁTICA E CÁLCULO DOS INDICADORES CONFORME A PLANILHA ---
         p_bruto = acao_row["peso_bruto"]
         p_comp_kg = acao_row["preco_animal_kg"]
         valor_total_compra = p_bruto * p_comp_kg
         
+        # Faturamento de vendas por qualidade
         total_vendas_ouro = sum(df_cortes[df_cortes["qualidade"] == "OURO"]["peso"] * df_cortes[df_cortes["qualidade"] == "OURO"]["preco_venda"])
         total_vendas_prata = sum(df_cortes[df_cortes["qualidade"] == "PRATA"]["peso"] * df_cortes[df_cortes["qualidade"] == "PRATA"]["preco_venda"])
         total_vendas_total = total_vendas_ouro + total_vendas_prata
         
+        # Coeficiente Geral
         coeficiente = valor_total_compra / total_vendas_total if total_vendas_total > 0 else 0
         
+        # Preço total de compra proporcional
         compra_ouro = total_vendas_ouro * coeficiente
         compra_prata = total_vendas_prata * coeficiente
         
+        # Pesos desossados
         peso_desossado_ouro = sum(df_cortes[df_cortes["qualidade"] == "OURO"]["peso"])
         peso_desossado_prata = sum(df_cortes[df_cortes["qualidade"] == "PRATA"]["peso"])
         peso_desossado_total = peso_desossado_ouro + peso_desossado_prata
         
-        # Custos Variáveis (Ex: Embalagem fixa de 0.0003 ou 0.03% conforme modelo de faturamento de vendas)
-        custo_efetivo_ouro = compra_ouro + (total_vendas_ouro * 0.0003)
-        custo_efetivo_prata = compra_prata + (total_vendas_prata * 0.0003)
-        custo_efetivo_total = custo_efetivo_ouro + custo_efetivo_prata
+        # Custo Efetivo Total com reprodução fiel do "bug" da planilha original
+        custo_efetivo_total_ouro = 0
+        custo_efetivo_total_prata = 0
         
-        margem_r_ouro = total_vendas_ouro - custo_efetivo_ouro
-        margem_r_prata = total_vendas_prata - custo_efetivo_prata
-        margem_r_total = total_vendas_total - custo_efetivo_total
+        for i, row in df_cortes.iterrows():
+            peso = row['peso']
+            p_venda = row['preco_venda']
+            p_custo_kg = p_venda * coeficiente
+            
+            # Taxa de embalagem L17 = 0.0003
+            # Se for a primeira linha (Bisteca - index 0): multiplica pelo Preço de Venda
+            if i == 0:
+                embalagem = 0.0003 * p_venda
+            else: # Todas as outras linhas: multiplica pelo Peso
+                embalagem = 0.0003 * peso
+                
+            custo_efetivo_kg = p_custo_kg + embalagem
+            custo_efetivo_total = peso * custo_efetivo_kg
+            
+            if row['qualidade'] == "OURO":
+                custo_efetivo_total_ouro += custo_efetivo_total
+            else:
+                custo_efetivo_total_prata += custo_efetivo_total
+                
+        custo_efetivo_total_geral = custo_efetivo_total_ouro + custo_efetivo_total_prata
+        
+        # Margens de Contribuição
+        margem_r_ouro = total_vendas_ouro - custo_efetivo_total_ouro
+        margem_r_prata = total_vendas_prata - custo_efetivo_total_prata
+        margem_r_total = total_vendas_total - custo_efetivo_total_geral
         
         margem_p_ouro = (margem_r_ouro / total_vendas_ouro) if total_vendas_ouro > 0 else 0
         margem_p_prata = (margem_r_prata / total_vendas_prata) if total_vendas_prata > 0 else 0
         margem_p_total = (margem_r_total / total_vendas_total) if total_vendas_total > 0 else 0
         
-        markup_ouro = (total_vendas_ouro / custo_efetivo_ouro) - 1 if custo_efetivo_ouro > 0 else 0
-        markup_prata = (total_vendas_prata / custo_efetivo_prata) - 1 if custo_efetivo_prata > 0 else 0
-        markup_total = (total_vendas_total / custo_efetivo_total) - 1 if custo_efetivo_total > 0 else 0
+        # Markup
+        markup_ouro = (total_vendas_ouro / custo_efetivo_total_ouro) - 1 if custo_efetivo_total_ouro > 0 else 0
+        markup_prata = (total_vendas_prata / custo_efetivo_total_prata) - 1 if custo_efetivo_total_prata > 0 else 0
+        markup_total = (total_vendas_total / custo_efetivo_total_geral) - 1 if custo_efetivo_total_geral > 0 else 0
         
+        # Preço Médio de Compra
         p_medio_compra_ouro = compra_ouro / peso_desossado_ouro if peso_desossado_ouro > 0 else 0
         p_medio_compra_prata = compra_prata / peso_desossado_prata if peso_desossado_prata > 0 else 0
         p_medio_compra_total = valor_total_compra / peso_desossado_total if peso_desossado_total > 0 else 0
         
-        # --- EXIBIÇÃO DA TABELA DE INDICADORES FIEL ---
+        # --- EXIBIÇÃO DA TABELA DE INDICADORES EXATOS ---
         st.markdown("---")
         st.subheader(f"📊 Quadro de Indicadores - Lote #{id_selecionado}")
         
@@ -256,17 +298,17 @@ elif menu == "Histórico & Edição":
             ],
             "OURO": [
                 f"R$ {compra_ouro:.2f}", f"R$ {total_vendas_ouro:.2f}", f"{peso_desossado_ouro:.3f} KG",
-                f"{coeficiente:.6f}", f"R$ {custo_efetivo_ouro:.2f}", f"R$ {margem_r_ouro:.2f}",
+                f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_ouro:.2f}", f"R$ {margem_r_ouro:.2f}",
                 f"{margem_p_ouro*100:.2f}%", f"{markup_ouro*100:.2f}%", f"R$ {p_medio_compra_ouro:.2f}"
             ],
             "PRATA": [
                 f"R$ {compra_prata:.2f}", f"R$ {total_vendas_prata:.2f}", f"{peso_desossado_prata:.3f} KG",
-                f"{coeficiente:.6f}", f"R$ {custo_efetivo_prata:.2f}", f"R$ {margem_r_prata:.2f}",
+                f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_prata:.2f}", f"R$ {margem_r_prata:.2f}",
                 f"{margem_p_prata*100:.2f}%", f"{markup_prata*100:.2f}%", f"R$ {p_medio_compra_prata:.2f}"
             ],
             "Total": [
                 f"R$ {valor_total_compra:.2f}", f"R$ {total_vendas_total:.2f}", f"{peso_desossado_total:.3f} KG",
-                f"{coeficiente:.6f}", f"R$ {custo_efetivo_total:.2f}", f"R$ {margem_r_total:.2f}",
+                f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_geral:.2f}", f"R$ {margem_r_total:.2f}",
                 f"{margem_p_total*100:.2f}%", f"{markup_total*100:.2f}%", f"R$ {p_medio_compra_total:.2f}"
             ]
         }
@@ -282,7 +324,6 @@ elif menu == "Histórico & Edição":
         df_cortes_calc["Lucro Bruto"] = df_cortes_calc["Valor Total Venda"] - df_cortes_calc["Preço de Custo Total"]
         df_cortes_calc["Rendimento %"] = (df_cortes_calc["peso"] / p_bruto) * 100
         
-        # Formatando a tabela do usuário final
         df_formatado = df_cortes_calc.rename(columns={
             "nome_corte": "Corte",
             "qualidade": "Qualidade",
@@ -304,12 +345,11 @@ elif menu == "Histórico & Edição":
             "Rendimento %": "{:.2f}%"
         }))
         
-        # Deletar Registro
-        if st.button("🗑️ Excluir esta Ação de Desossa", key=f"del_{id_selecionado}"):
+        if st.button("🗑️ Excluir esta Ação de Desossa Completa", key=f"del_{id_selecionado}"):
             conn = get_connection()
             cursor = conn.cursor()
             cursor.execute(f"DELETE FROM acoes WHERE id = {id_selecionado}")
             conn.commit()
             conn.close()
-            st.success("Registro deletado com sucesso!")
+            st.success("Registro completo deletado com sucesso!")
             st.rerun()
