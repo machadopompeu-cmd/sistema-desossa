@@ -107,8 +107,11 @@ if not st.session_state.logado:
         btn_entrar = st.form_submit_button("Entrar no Sistema")
         
         if btn_entrar:
+            # .strip() remove espaços extras acidentais; .lower() converte para minúsculas
+            login_formatado = campo_login.strip().lower() 
+            
             # 1. Verifica primeiro se é o Administrador Geral
-            if campo_login == "admin" and campo_senha == "renato123":
+            if login_formatado == "admin" and campo_senha == "renato123":
                 st.session_state.logado = True
                 st.session_state.empresa_id = 0
                 st.session_state.empresa_nome = "Administrador Geral"
@@ -119,7 +122,8 @@ if not st.session_state.logado:
                 # 2. Se não for admin, consulta as empresas cadastradas no banco de dados
                 conn = get_connection()
                 cursor = conn.cursor()
-                cursor.execute("SELECT id, nome FROM empresas WHERE login = ? AND senha = ?", (campo_login, campo_senha))
+                # Busca também convertendo o login salvo para minúsculas na consulta
+                cursor.execute("SELECT id, nome FROM empresas WHERE LOWER(login) = ? AND senha = ?", (login_formatado, campo_senha))
                 user = cursor.fetchone()
                 conn.close()
                 
@@ -171,10 +175,12 @@ else:
                     if not novo_nome or not novo_login or not nova_senha:
                         st.error("Preencha todos os campos para efetuar o registo!")
                     else:
+                        # Força o salvamento do usuário em formato minúsculo e sem espaços nas pontas
+                        login_salvar = novo_login.strip().lower()
                         try:
                             conn = get_connection()
                             cursor = conn.cursor()
-                            cursor.execute("INSERT INTO empresas (nome, login, senha) VALUES (?, ?, ?)", (novo_nome, novo_login, nova_senha))
+                            cursor.execute("INSERT INTO empresas (nome, login, senha) VALUES (?, ?, ?)", (novo_nome, login_salvar, nova_senha))
                             conn.commit()
                             conn.close()
                             st.success(f"🎉 Empresa '{novo_nome}' cadastrada com sucesso!")
@@ -324,7 +330,7 @@ else:
                         """, (str(ed_data), ed_tipo, ed_p_bruto, ed_preco_animal, ed_ossos, ed_quebra, ed_exsudato, id_selecionado, st.session_state.empresa_id))
                         conn.commit()
                         conn.close()
-                        st.success("✅ Dados da carcaça updated com sucesso!")
+                        st.success("✅ Dados da carcaça atualizados com sucesso!")
                         st.rerun()
 
                 # --- GERENCIAMENTO INDIVIDUAL DE CADA CORTE ---
@@ -360,7 +366,7 @@ else:
                                 conn.close()
                                 st.warning(f"Corte {corte_row['nome_corte']} removido!")
                                 st.rerun()
-                        st.markdown("---")
+                    st.markdown("---")
 
                 # --- CÁLCULOS E MATEMÁTICA ---
                 p_bruto = acao_row["peso_bruto"]
@@ -540,7 +546,7 @@ else:
                     "Margem Bruta (R$)": total_margem_bruta, "Rendimento %": total_rendimento
                 }])
                 
-                df_com_total = pd.concat([df_final, inline_total if 'inline_total' in locals() else linha_total], ignore_index=True)
+                df_com_total = pd.concat([df_final, linha_total], ignore_index=True)
                 
                 st.dataframe(df_com_total.style.format({
                     "Peso (KG)": "{:.3f}",
@@ -608,7 +614,7 @@ else:
                     valores_prata = [
                         f"R$ {compra_prata:.2f}", f"R$ {total_vendas_prata:.2f}", f"{peso_desossado_prata:.3f}",
                         f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_prata:.2f}", f"R$ {margem_r_prata:.2f}",
-                        f"{margem_p_prata*100:.2f}%", f"{markup_prata*100:.2f}%", f"R$ {p_medio_compra_prata:.2f}",
+                        f"{markup_prata*100:.2f}%", f"{markup_prata*100:.2f}%", f"R$ {p_medio_compra_prata:.2f}",
                         f"R$ {p_medio_compra_com_prata:.2f}", f"R$ {p_medio_venda_prata:.2f}"
                     ]
                     valores_totais = [
