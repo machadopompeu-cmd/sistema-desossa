@@ -90,7 +90,7 @@ if menu == "Nova Desossa":
             })
             st.success(f"Corte {nome_corte.upper()} adicionado!")
 
-    # Se houver cortes adicionados temporariamente, exibe-os com botões individuais de exclusão
+    # Se houver cortes adicionados temporariamente, exibe-os com botões de exclusão
     if st.session_state.cortes_temp:
         st.markdown("##### Gerenciar Cortes Adicionados:")
         for idx, c in enumerate(st.session_state.cortes_temp):
@@ -231,7 +231,11 @@ elif menu == "Histórico & Edição":
         peso_final = p_bruto - ossos_val - quebra_val - exsudato_val
         total_quebra = ossos_val + quebra_val + exsudato_val
         
-        # --- TABELA DE APURAÇÃO DO ANIMAL (REPLICANDO FIELMENTE A PRIMEIRA IMAGEM) ---
+        # Função interna auxiliar para ocultar zeros na coluna de pesos (idêntico à imagem)
+        def formatar_peso_visual(v):
+            return f"{v:.3f}" if v > 0.0 else ""
+        
+        # --- TABELA DE APURAÇÃO DO ANIMAL (REPLICANDO EXATAMENTE A PRIMEIRA IMAGEM) ---
         st.subheader("📊 Apuração Geral do Lote")
         
         apuracao_data = {
@@ -244,12 +248,12 @@ elif menu == "Histórico & Edição":
                 "TOTAL DE QUEBRA"
             ],
             "Peso (KG)": [
-                f"{p_bruto:.3f}", 
-                f"{ossos_val:.3f}", 
-                f"{quebra_val:.3f}", 
-                f"{exsudato_val:.3f}", 
-                f"{peso_final:.3f}", 
-                f"{total_quebra:.3f}"
+                formatar_peso_visual(p_bruto), 
+                formatar_peso_visual(ossos_val), 
+                formatar_peso_visual(quebra_val), 
+                formatar_peso_visual(exsudato_val), 
+                formatar_peso_visual(peso_final), 
+                formatar_peso_visual(total_quebra)
             ],
             "R$": [
                 f"R$ {valor_total_compra:.2f}", 
@@ -337,7 +341,7 @@ elif menu == "Histórico & Edição":
         p_medio_venda_prata = total_vendas_prata / peso_desossado_prata if peso_desossado_prata > 0 else 0
         p_medio_venda_total = total_vendas_total / peso_desossado_total if peso_desossado_total > 0 else 0
         
-        # --- EXIBIÇÃO DO QUADRO DE INDICADORES (COEFICIENTE EM DECIMAL FORMATADO) ---
+        # --- EXIBIÇÃO DO QUADRO DE INDICADORES ---
         st.subheader(f"📊 Quadro de Indicadores - Lote #{id_selecionado}")
         
         indicadores_data = {
@@ -423,7 +427,7 @@ elif menu == "Histórico & Edição":
             "Rendimento %": total_rendimento
         }])
         
-        df_com_total = pd.concat([df_final, linha_total], ignore_index=True)
+        df_com_total = pd.concat([df_final, line_total if 'line_total' in locals() else linha_total], ignore_index=True)
         
         # Renderização visual com tratamento das colunas de preços por KG no Total
         st.dataframe(df_com_total.style.format({
