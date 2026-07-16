@@ -225,7 +225,6 @@ def init_form_states():
         st.session_state.input_corte_peso = 0.0
     if "input_corte_preco" not in st.session_state:
         st.session_state.input_corte_preco = 0.0
-    # Inicializador para a chave do arquivo de importação CSV
     if "uploader_key" not in st.session_state:
         st.session_state.uploader_key = 0
 
@@ -362,7 +361,6 @@ else:
     
     if st.session_state.e_admin:
         st.sidebar.markdown("### 🛠️ Menu Administrativo")
-        # ADICIONAMOS A OPÇÃO DE IMPORTAR CORTES NO MENU DO ADMIN
         menu = st.sidebar.radio("Selecione a Tela:", ["Gerenciar Empresas", "Cadastrar Empresa", "Gerenciar Cadastro de Cortes", "Importar Cortes (CSV)"])
     else:
         st.sidebar.markdown("### 🥩 Menu de Operações")
@@ -371,12 +369,11 @@ else:
     # ==================== TELAS EXCLUSIVAS DO ADMINISTRADOR ====================
     if st.session_state.e_admin and menu != "Gerenciar Cadastro de Cortes":
         
-        # --- NOVO REQUISITO: IMPORTAR CORTES VIA CSV PARA EMPRESAS ---
+        # --- IMPORTAR CORTES VIA CSV PARA EMPRESAS ---
         if menu == "Importar Cortes (CSV)":
             st.header("📥 Importação Massiva de Cortes (CSV)")
             st.info("Utilize esta tela para importar uma planilha de cortes diretamente para uma empresa cadastrada.")
             
-            # Buscar lista de empresas do banco para que o admin escolha o destino
             conn = get_connection()
             df_empresas_list = pd.read_sql_query("SELECT id, nome FROM empresas ORDER BY nome ASC", conn)
             conn.close()
@@ -384,16 +381,12 @@ else:
             if df_empresas_list.empty:
                 st.warning("⚠️ Cadastre primeiro uma empresa parceira no menu para poder importar cortes para ela.")
             else:
-                # Criar dicionário mapeando "Nome da Empresa" -> "ID da Empresa"
                 emp_options = {row['nome']: row['id'] for _, row in df_empresas_list.iterrows()}
-                # Adicionar opção "Cortes Globais (Sistema)" para o ID None
                 emp_options["Cortes Globais (Sistema)"] = None
                 
                 selected_emp_name = st.selectbox("1. Selecione a Empresa de Destino", list(emp_options.keys()))
                 target_emp_id = emp_options[selected_emp_name]
                 
-                # Buscar os tipos de desossa que essa empresa de destino pode usar
-                # Passamos o ID da empresa ou None para buscar os tipos corretos
                 tipos_empresa_destino = get_tipos_desossa(target_emp_id if target_emp_id is not None else 0)
                 
                 if not tipos_empresa_destino:
@@ -404,11 +397,9 @@ else:
                     st.markdown("### 📄 Instruções do arquivo CSV")
                     st.write("O seu arquivo CSV deve conter uma coluna com o cabeçalho exatamente escrito: **`nome_corte`**.")
                     
-                    # Exemplo visual
                     exemplo_df = pd.DataFrame({"nome_corte": ["ACEM ESPECIAL", "PEITO COM OSSO", "PALETA LIMPA"]})
                     st.dataframe(exemplo_df)
                     
-                    # Upload do arquivo CSV com chave dinâmica para limpeza automática pós-sucesso
                     uploaded_csv = st.file_uploader(
                         "3. Selecione o arquivo CSV para Importar", 
                         type=["csv"], 
@@ -417,14 +408,19 @@ else:
                     
                     if uploaded_csv is not None:
                         try:
-                            # Lê o CSV enviado pelo usuário
-                            df_imported = pd.read_csv(uploaded_csv)
+                            # --- SOLUÇÃO INTELIGENTE PARA RESOLVER O ERRO DE CODEC ---
+                            # Tenta ler em UTF-8 (padrão) primeiro. Se falhar, tenta ler em Latin-1 (padrão do Excel em português)
+                            try:
+                                df_imported = pd.read_csv(uploaded_csv, encoding="utf-8")
+                            except UnicodeDecodeError:
+                                # Retorna o ponteiro do arquivo para o início para tentar ler novamente
+                                uploaded_csv.seek(0)
+                                df_imported = pd.read_csv(uploaded_csv, encoding="latin-1")
+                            # --------------------------------------------------------
                             
-                            # Verifica se a coluna exigida existe no arquivo
                             if "nome_corte" not in df_imported.columns:
                                 st.error("❌ Erro: O arquivo CSV não possui a coluna 'nome_corte'. Verifique a planilha.")
                             else:
-                                # Limpa os dados vazios e formata para maiúsculo
                                 df_imported['nome_corte'] = df_imported['nome_corte'].dropna().astype(str).str.strip().str.upper()
                                 df_imported = df_imported[df_imported['nome_corte'] != ""]
                                 
@@ -441,24 +437,20 @@ else:
                                     for _, row in df_imported.iterrows():
                                         corte_nome = row['nome_corte']
                                         try:
-                                            # Insere o corte garantindo o isolamento
                                             cursor.execute("""
                                                 INSERT INTO cortes_padrao (tipo_desossa, nome_corte, empresa_id) 
                                                 VALUES (?, ?, ?)
                                             """, (selected_tipo_desossa, corte_nome, target_emp_id))
                                             sucessos += 1
                                         except sqlite3.IntegrityError:
-                                            # Caso já exista esse corte cadastrado no mesmo tipo e empresa, ele ignora
                                             duplicados += 1
                                             
                                     conn.commit()
                                     conn.close()
                                     
-                                    # Apresenta os resultados de forma clara
                                     st.balloons()
                                     st.success(f"🎉 Importação Concluída! Cortes salvos com sucesso: {sucessos} | Cortes duplicados ignorados: {duplicados}")
                                     
-                                    # Modifica a chave do uploader para resetá-lo na tela (esvazia o arquivo enviado)
                                     st.session_state.uploader_key += 1
                                     st.rerun()
                                     
