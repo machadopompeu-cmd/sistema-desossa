@@ -8,7 +8,7 @@ from fpdf import FPDF
 # --- 1. CONFIGURAÇÃO VISUAL DA PÁGINA ---
 st.set_page_config(page_title="Gestão de Desossa - Renato Frigotudo", layout="wide")
 
-# --- 2. BANCO DE DADOS INTELIGENTE (MULTI-EMPRESA) ---
+# --- 2. BANCO DE DADOS INTELIGENTE (MULTI-EMPRESA & CONTROLE DE ACESSO) ---
 def init_db():
     conn = sqlite3.connect("desossa_db.db")
     cursor = conn.cursor()
@@ -19,9 +19,18 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nome TEXT NOT NULL,
             login TEXT UNIQUE NOT NULL,
-            senha TEXT NOT NULL
+            senha TEXT NOT NULL,
+            ativo INTEGER DEFAULT 1
         )
     """)
+    
+    # ATUALIZAÇÃO AUTOMÁTICA: Adiciona a coluna 'ativo' se ela não existir de testes anteriores
+    try:
+        cursor.execute("ALTER TABLE empresas ADD COLUMN ativo INTEGER DEFAULT 1")
+        conn.commit()
+    except sqlite3.OperationalError:
+        # Se der erro, é porque a coluna 'ativo' já existia. Tudo bem!
+        pass
     
     # Tabela de desossa vinculada à empresa dona dos dados
     cursor.execute("""
@@ -122,18 +131,24 @@ if not st.session_state.logado:
                 # 2. Se não for admin, consulta as empresas cadastradas no banco de dados
                 conn = get_connection()
                 cursor = conn.cursor()
-                # Busca também convertendo o login salvo para minúsculas na consulta
-                cursor.execute("SELECT id, nome FROM empresas WHERE LOWER(login) = ? AND senha = ?", (login_formatado, campo_senha))
+                # Busca também trazendo o status 'ativo' da empresa
+                cursor.execute("SELECT id, nome, ativo FROM empresas WHERE LOWER(login) = ? AND senha = ?", (login_formatado, campo_senha))
                 user = cursor.fetchone()
                 conn.close()
                 
                 if user:
-                    st.session_state.logado = True
-                    st.session_state.empresa_id = user[0]
-                    st.session_state.empresa_nome = user[1]
-                    st.session_state.e_admin = False
-                    st.success(f"Login realizado com sucesso como: {user[1]}!")
-                    st.rerun()
+                    empresa_id, empresa_nome, status_ativo = user
+                    
+                    # Se a empresa estiver inativa (ativo == 0), bloqueia o login imediatamente!
+                    if status_ativo == 0:
+                        st.error("🚫 O acesso da sua empresa está suspenso temporariamente. Por favor, entre em contacto com o Administrador do sistema.")
+                    else:
+                        st.session_state.logado = True
+                        st.session_state.empresa_id = empresa_id
+                        st.session_state.empresa_nome = empresa_nome
+                        st.session_state.e_admin = False
+                        st.success(f"Login realizado com sucesso como: {empresa_nome}!")
+                        st.rerun()
                 else:
                     st.error("Usuário ou senha incorretos.")
 
@@ -155,7 +170,7 @@ else:
     
     # Definição do menu lateral baseado nas permissões (Admin vs Usuário Comum)
     if st.session_state.e_admin:
-        menu = st.sidebar.selectbox("Menu Administrativo", ["Cadastrar Empresa", "Visualizar Todas as Empresas"])
+        menu = st.sidebar.selectbox("Menu Administrativo", ["Gerenciar Empresas", "Cadastrar Empresa"])
     else:
         menu = st.sidebar.selectbox("Menu de Operações", ["Nova Desossa", "Histórico & Edição"])
 
@@ -180,24 +195,68 @@ else:
                         try:
                             conn = get_connection()
                             cursor = conn.cursor()
-                            cursor.execute("INSERT INTO empresas (nome, login, senha) VALUES (?, ?, ?)", (novo_nome, login_salvar, nova_senha))
+                            cursor.execute("INSERT INTO empresas (nome, login, senha, ativo) VALUES (?, ?, ?, 1)", (novo_nome, login_salvar, nova_senha))
                             conn.commit()
                             conn.close()
                             st.success(f"🎉 Empresa '{novo_nome}' cadastrada com sucesso!")
                         except sqlite3.IntegrityError:
                             st.error("Este nome de usuário já está sendo usado por outra empresa.")
                             
-        elif menu == "Visualizar Todas as Empresas":
-            st.header("🏢 Empresas Cadastradas no Sistema")
+        elif menu == "Gerenciar Empresas":
+            st.header("🏢 Painel de Controlo e Restrição de Empresas")
+            st.info("Aqui pode visualizar as empresas parceiras e gerenciar as permissões de acesso (Ativar / Bloquear).")
             
             conn = get_connection()
-            df_empresas = pd.read_sql_query("SELECT id as 'ID', nome as 'Nome Comercial', login as 'Usuário de Acesso' FROM empresas", conn)
+            # Trazemos as empresas ordenadas pelo nome
+            df_empresas = pd.read_sql_query("SELECT id, nome, login, ativo FROM empresas ORDER BY nome ASC", conn)
             conn.close()
             
             if df_empresas.empty:
-                st.warning("Ainda não existem empresas cadastradas no sistema.")
+                st.warning("Ainda não existem empresas parceiras cadastradas no sistema.")
             else:
-                st.dataframe(df_empresas, use_container_width=True)
+                st.markdown("---")
+                # Exibimos cada empresa como um "Card" intuitivo com botão de controle
+                for index, row in df_empresas.iterrows():
+                    emp_id = row['id']
+                    emp_nome = row['nome']
+                    emp_login = row['login']
+                    emp_status = row['ativo']
+                    
+                    # Criação de colunas para layout limpo
+                    col_info_emp, col_status_badge, col_btn_action = st.columns([3, 1, 1])
+                    
+                    with col_info_emp:
+                        st.markdown(f"**🏢 {emp_nome.upper()}** (Usuário: `{emp_login}`)")
+                    
+                    with col_status_badge:
+                        if emp_status == 1:
+                            st.markdown("🟢 **ATIVO**")
+                        else:
+                            st.markdown("🔴 **BLOQUEADO (Acesso Restrito)**")
+                    
+                    with col_btn_action:
+                        if emp_status == 1:
+                            # Se está ativo, mostra botão para restringir
+                            if st.button("🚫 Bloquear", key=f"bloq_{emp_id}"):
+                                conn = get_connection()
+                                cursor = conn.cursor()
+                                cursor.execute("UPDATE empresas SET ativo = 0 WHERE id = ?", (emp_id,))
+                                conn.commit()
+                                conn.close()
+                                st.success(f"Acesso de {emp_nome} bloqueado!")
+                                st.rerun()
+                        else:
+                            # Se está bloqueado, mostra botão para ativar
+                            if st.button("✅ Ativar", key=f"ativ_{emp_id}"):
+                                conn = get_connection()
+                                cursor = conn.cursor()
+                                cursor.execute("UPDATE empresas SET ativo = 1 WHERE id = ?", (emp_id,))
+                                conn.commit()
+                                conn.close()
+                                st.success(f"Acesso de {emp_nome} liberado!")
+                                st.rerun()
+                                
+                    st.markdown("<hr style='margin: 4px 0; border-top: 1px dashed #e0e0e0;'>", unsafe_allow_html=True)
 
     # ==================== TELAS DAS EMPRESAS PARCEIRAS ====================
     else:
@@ -355,7 +414,7 @@ else:
                                 """, (c_qual, c_peso, c_preco, corte_row["id"]))
                                 conn.commit()
                                 conn.close()
-                                st.success(f"Corte {corte_row['nome_corte']} atualizado!")
+                                st.success(f"Corte {corte_row['nome_corte']} updated!")
                                 st.rerun()
                                 
                             if col_btn_excluir.button("🗑️ Excluir", key=f"del_c_{corte_row['id']}"):
@@ -409,10 +468,10 @@ else:
                 peso_desossado_prata = sum(df_cortes[df_cortes["qualidade"] == "PRATA"]["peso"])
                 peso_desossado_total = peso_desossado_ouro + peso_desossado_prata
                 
-                # Ajuste de Embalagem conforme a aba SUINO vs BOVINO[cite: 7]
+                # Ajuste de Embalagem conforme a aba SUINO vs BOVINO
                 custo_efetivo_total_ouro = 0
                 custo_efetivo_total_prata = 0
-                taxa_embalagem = 0.0 if tipo_animal_atual == "SUINO" else 0.0003[cite: 7]
+                taxa_embalagem = 0.0 if tipo_animal_atual == "SUINO" else 0.0003
                 
                 for i, row in df_cortes.iterrows():
                     peso = row['peso']
@@ -420,9 +479,9 @@ else:
                     p_custo_kg = p_venda * coeficiente
                     
                     if i == 0:
-                        embalagem = taxa_embalagem * p_venda[cite: 7]
+                        embalagem = taxa_embalagem * p_venda
                     else:
-                        embalagem = taxa_embalagem * peso[cite: 7]
+                        embalagem = taxa_embalagem * peso
                         
                     custo_efetivo_kg = p_custo_kg + embalagem
                     custo_efetivo_total = peso * custo_efetivo_kg
@@ -458,7 +517,7 @@ else:
                 p_medio_venda_prata = total_vendas_prata / peso_desossado_prata if peso_desossado_prata > 0 else 0
                 p_medio_venda_total = total_vendas_total / peso_desossado_total if peso_desossado_total > 0 else 0
                 
-                # --- PALETA VERDE-LIMÃO DO MODELO NO QUADRO ---[cite: 7]
+                # --- PALETA VERDE-LIMÃO DO MODELO NO QUADRO ---
                 st.markdown(
                     """
                     <style>
@@ -507,7 +566,7 @@ else:
                 }
                 st.table(pd.DataFrame(indicadores_data).set_index("INDICADORES"))
                 
-                # --- PALETA AMARELO-OURO DO MODELO NOS CORTES ---[cite: 7]
+                # --- PALETA AMARELO-OURO DO MODELO NOS CORTES ---
                 st.markdown(
                     """
                     <div style="background-color: #FFC000; padding: 8px; border-radius: 4px; margin-top: 20px; margin-bottom: 10px; color: black;">
@@ -585,8 +644,8 @@ else:
                     pdf.cell(95, 6, f"Peso Final Aproveitado: {peso_final:.3f} KG", ln=1)
                     pdf.ln(5)
                     
-                    # Quadro de Indicadores (Colorido com Verde-limão)[cite: 7]
-                    pdf.set_fill_color(146, 208, 80) # Verde #92D050[cite: 7]
+                    # Quadro de Indicadores (Colorido com Verde-limão)
+                    pdf.set_fill_color(146, 208, 80) # Verde #92D050
                     pdf.set_font("Arial", style="B", size=10)
                     pdf.cell(190, 8, "QUADRO DE INDICADORES (VERDE)", ln=1, fill=True, align="C")
                     pdf.set_font("Arial", size=8)
@@ -614,7 +673,7 @@ else:
                     valores_prata = [
                         f"R$ {compra_prata:.2f}", f"R$ {total_vendas_prata:.2f}", f"{peso_desossado_prata:.3f}",
                         f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_prata:.2f}", f"R$ {margem_r_prata:.2f}",
-                        f"{markup_prata*100:.2f}%", f"{markup_prata*100:.2f}%", f"R$ {p_medio_compra_prata:.2f}",
+                        f"{margem_p_prata*100:.2f}%", f"{markup_prata*100:.2f}%", f"R$ {p_medio_compra_prata:.2f}",
                         f"R$ {p_medio_compra_com_prata:.2f}", f"R$ {p_medio_venda_prata:.2f}"
                     ]
                     valores_totais = [
@@ -633,8 +692,8 @@ else:
                     
                     pdf.ln(5)
                     
-                    # Detalhamento de Cortes (Amarelo-ouro)[cite: 7]
-                    pdf.set_fill_color(255, 192, 0) # Amarelo #FFC000[cite: 7]
+                    # Detalhamento de Cortes (Amarelo-ouro)
+                    pdf.set_fill_color(255, 192, 0) # Amarelo #FFC000
                     pdf.set_font("Arial", style="B", size=10)
                     pdf.cell(190, 8, "DETALHAMENTO DE CORTES (AMARELO)", ln=1, fill=True, align="C")
                     pdf.set_font("Arial", size=7)
