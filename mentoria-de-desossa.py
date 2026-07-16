@@ -8,7 +8,64 @@ from fpdf import FPDF
 # --- 1. CONFIGURAÇÃO VISUAL DA PÁGINA ---
 st.set_page_config(page_title="Gestão de Desossa - Renato Frigotudo", layout="wide")
 
-# --- 2. BANCO DE DADOS INTELIGENTE (MULTI-EMPRESA & CONTROLE DE ACESSO) ---
+# --- 2. ESTILO CSS PERSONALIZADO (TOM DE AZUL PARA TODAS AS TELAS) ---
+st.markdown(
+    """
+    <style>
+    /* Cor de fundo geral e fontes do sistema */
+    .stApp {
+        background-color: #F4F7F9;
+        font-family: 'Helvetica Neue', Arial, sans-serif;
+    }
+    
+    /* Personalização de botões para tom de azul */
+    div.stButton > button:first-child {
+        background-color: #1C3D5A;
+        color: white;
+        border-radius: 6px;
+        border: none;
+        padding: 8px 16px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+    div.stButton > button:first-child:hover {
+        background-color: #2B5C84;
+        color: #E2E8F0;
+        border: none;
+    }
+    
+    /* Botões dentro de formulários */
+    form button {
+        background-color: #1C3D5A !important;
+        color: white !important;
+        border-radius: 6px !important;
+    }
+    form button:hover {
+        background-color: #2B5C84 !important;
+    }
+
+    /* Estilização das caixas de texto e entradas de número */
+    div[data-testid="stTextInput"] input, div[data-testid="stNumberInput"] input {
+        border: 1px solid #1C3D5A;
+        border-radius: 6px;
+    }
+    
+    /* Títulos em azul escuro */
+    h1, h2, h3, h4 {
+        color: #1C3D5A !important;
+        font-weight: bold !important;
+    }
+    
+    /* Customização do menu lateral (Sidebar) */
+    section[data-testid="stSidebar"] {
+        background-color: #E6EDF2;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# --- 3. BANCO DE DADOS INTELIGENTE (MULTI-EMPRESA & CONTROLE DE ACESSO) ---
 def init_db():
     conn = sqlite3.connect("desossa_db.db")
     cursor = conn.cursor()
@@ -67,7 +124,7 @@ init_db()
 def get_connection():
     return sqlite3.connect("desossa_db.db")
 
-# --- 3. CABEÇALHO COM ESTILO PROFISSIONAL ---
+# --- 4. CABEÇALHO COM ESTILO PROFISSIONAL (FIXO EM TODAS AS TELAS) ---
 def exibir_cabecalho(nome_empresa="RENATO FRIGOTUDO & ASSOCIADOS"):
     col_logo, col_info = st.columns([1, 4])
     
@@ -92,18 +149,18 @@ def exibir_cabecalho(nome_empresa="RENATO FRIGOTUDO & ASSOCIADOS"):
             """, 
             unsafe_allow_html=True
         )
-    st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px; border-top: 1px solid #e0e0e0;'>", unsafe_allow_html=True)
+    st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px; border-top: 2px solid #1C3D5A;'>", unsafe_allow_html=True)
 
-# --- 4. CONTROLE DE SESSÃO (CONTA CONECTADA) ---
+# --- 5. CONTROLE DE SESSÃO (CONTA CONECTADA) ---
 if "logado" not in st.session_state:
     st.session_state.logado = False
     st.session_state.empresa_id = None
     st.session_state.empresa_nome = ""
     st.session_state.e_admin = False # Define se o usuário atual é o administrador
 
-# --- 5. TELA DE ACESSO (LOGIN CENTRALIZADO COM CABEÇALHO) ---
+# --- 6. TELA DE ACESSO (LOGIN CENTRALIZADO COM CABEÇALHO AZUL) ---
 if not st.session_state.logado:
-    # Exibe o cabeçalho oficial diretamente na tela de login
+    # Exibe o cabeçalho oficial de Pompéu/MG na tela de login
     exibir_cabecalho("RENATO FRIGOTUDO & ASSOCIADOS")
     
     st.title("🔒 Portal de Acesso - Gestão de Desossa")
@@ -115,10 +172,9 @@ if not st.session_state.logado:
         btn_entrar = st.form_submit_button("Entrar no Sistema")
         
         if btn_entrar:
-            # Tratamento de espaços extras e conversão para minúsculas para evitar erros de digitação
             login_formatado = campo_login.strip().lower() 
             
-            # 1. Verifica primeiro se é o Administrador Geral
+            # 1. Verifica se é o Administrador Geral
             if login_formatado == "admin" and campo_senha == "renato123":
                 st.session_state.logado = True
                 st.session_state.empresa_id = 0
@@ -137,7 +193,6 @@ if not st.session_state.logado:
                 if user:
                     empresa_id, empresa_nome, status_ativo = user
                     
-                    # Se a empresa estiver inativa (ativo == 0), bloqueia o login imediatamente
                     if status_ativo == 0:
                         st.error("🚫 O acesso da sua empresa está suspenso temporariamente. Por favor, entre em contato com o Administrador do sistema.")
                     else:
@@ -151,7 +206,7 @@ if not st.session_state.logado:
                     st.error("Usuário ou senha incorretos.")
 
 else:
-    # --- 6. MENU LATERAL DO USUÁRIO LOGADO ---
+    # --- 7. MENU LATERAL DO USUÁRIO LOGADO ---
     st.sidebar.markdown(f"**Ativo como:**\n{st.session_state.empresa_nome}")
     if st.sidebar.button("🚪 Sair do Sistema"):
         st.session_state.logado = False
@@ -287,7 +342,7 @@ else:
                                             
                     st.markdown("<hr style='margin: 4px 0; border-top: 1px dashed #e0e0e0;'>", unsafe_allow_html=True)
 
-    # ==================== TELAS DAS EMPRESAS PARCEIRAS (ACESSO OPERACIONAL) ====================
+    # ==================== TELAS DAS EMPRESAS PARCEIRAS ====================
     else:
         # ==================== TELA: NOVA DESOSSA ====================
         if menu == "Nova Desossa":
@@ -372,7 +427,6 @@ else:
             st.header("📂 Histórico & Edição de Desossas")
             
             conn = get_connection()
-            # Este SELECT filtra os lotes unicamente pela empresa ativa logada!
             df_acoes = pd.read_sql_query(f"SELECT * FROM acoes WHERE empresa_id = {st.session_state.empresa_id} ORDER BY data_acao DESC", conn)
             conn.close()
             
@@ -457,7 +511,7 @@ else:
                                 st.rerun()
                         st.markdown("---")
 
-                # --- CÁLCULOS E RENDIMENTOS ---
+                # --- CÁLCULOS E MATEMÁTICA ---
                 p_bruto = acao_row["peso_bruto"]
                 p_comp_kg = acao_row["preco_animal_kg"]
                 valor_total_compra = p_bruto * p_comp_kg
@@ -484,7 +538,7 @@ else:
                 }
                 st.table(pd.DataFrame(apuracao_data).set_index("Apuração do Lote"))
 
-                # --- CONTROLES FINANCEIROS ---
+                # --- FINANCEIROS ---
                 total_vendas_ouro = sum(df_cortes[df_cortes["qualidade"] == "OURO"]["peso"] * df_cortes[df_cortes["qualidade"] == "OURO"]["preco_venda"])
                 total_vendas_prata = sum(df_cortes[df_cortes["qualidade"] == "PRATA"]["peso"] * df_cortes[df_cortes["qualidade"] == "PRATA"]["preco_venda"])
                 total_vendas_total = total_vendas_ouro + total_vendas_prata
@@ -498,7 +552,7 @@ else:
                 peso_desossado_prata = sum(df_cortes[df_cortes["qualidade"] == "PRATA"]["peso"])
                 peso_desossado_total = peso_desossado_ouro + peso_desossado_prata
                 
-                # Ajuste de Embalagem conforme a categoria do lote
+                # Ajuste de Embalagem conforme a aba SUINO vs BOVINO
                 custo_efetivo_total_ouro = 0
                 custo_efetivo_total_prata = 0
                 taxa_embalagem = 0.0 if tipo_animal_atual == "SUINO" else 0.0003
@@ -550,18 +604,6 @@ else:
                 # --- PALETA VERDE-LIMÃO DO MODELO NO QUADRO ---
                 st.markdown(
                     """
-                    <style>
-                    div[data-testid="stTable"] {
-                        border-radius: 4px;
-                    }
-                    .limao-container {
-                        background-color: #92D050; 
-                        padding: 8px; 
-                        border-radius: 4px; 
-                        margin-bottom: 10px;
-                        color: black;
-                    }
-                    </style>
                     <div class="limao-container">
                         <strong>🟩 Quadro de Indicadores (Fiel à Cor da Planilha)</strong>
                     </div>
@@ -655,7 +697,7 @@ else:
                     pdf.add_page()
                     pdf.set_font("Arial", size=12)
                     
-                    # Cabeçalho do PDF com tom institucional
+                    # Cabeçalho do PDF com tom institucional azul escuro
                     pdf.set_fill_color(28, 61, 90) # Azul Escuro
                     pdf.set_text_color(255, 255, 255)
                     pdf.cell(190, 15, f"RELATORIO DE DESOSSA - {st.session_state.empresa_nome.upper()}", ln=1, align="C", fill=True)
