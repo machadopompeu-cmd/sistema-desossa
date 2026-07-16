@@ -4,7 +4,7 @@ import sqlite3
 import datetime
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="Mentoria de Desossa - Tangará", layout="wide")
+st.set_config = st.set_page_config(page_title="Mentoria de Desossa - Tangará", layout="wide")
 
 # --- CONEXÃO COM O BANCO DE DADOS ---
 def init_db():
@@ -45,7 +45,7 @@ def get_connection():
 
 # --- INTERFACE ---
 st.title("🍖 Sistema de Mentoria de Desossa & Indicadores")
-st.markdown("Replicador fiel do modelo de inteligência de custos da desossa com edição de dados.")
+st.markdown("Replicador fiel e completo do modelo de inteligência de custos da desossa.")
 
 # Sidebar para Navegação
 menu = st.sidebar.selectbox("Menu de Operações", ["Nova Desossa", "Histórico & Edição"])
@@ -90,7 +90,6 @@ if menu == "Nova Desossa":
             })
             st.success(f"Corte {nome_corte.upper()} adicionado!")
 
-    # Se houver cortes adicionados temporariamente, exibe-os com botões individuais de exclusão
     if st.session_state.cortes_temp:
         st.markdown("##### Gerenciar Cortes Adicionados:")
         for idx, c in enumerate(st.session_state.cortes_temp):
@@ -183,11 +182,10 @@ elif menu == "Histórico & Edição":
                 st.success("✅ Dados da carcaça atualizados com sucesso!")
                 st.rerun()
 
-        # --- GERENCIAMENTO INDIVIDUAL DE CADA CORTE (EDIÇÃO & EXCLUSÃO) ---
+        # --- GERENCIAMENTO INDIVIDUAL DE CADA CORTE ---
         with st.expander("🥩 GERENCIAR CORTES INDIVIDUALMENTE"):
-            st.info("Aqui pode Editar ou Excluir cada corte deste lote de forma individual:")
+            st.info("Aqui pode Editar ou Excluir cada corte deste lote individualmente:")
             for i, corte_row in df_cortes.iterrows():
-                # Criamos um container visual para cada corte
                 with st.container():
                     st.markdown(f"##### Corte: **{corte_row['nome_corte']}**")
                     col_c1, col_c2, col_c3, col_btn_salvar, col_btn_excluir = st.columns([2, 2, 2, 1, 1])
@@ -206,7 +204,7 @@ elif menu == "Histórico & Edição":
                         """, (c_qual, c_peso, c_preco, corte_row["id"]))
                         conn.commit()
                         conn.close()
-                        st.success(f"Corte {corte_row['nome_corte']} atualizado com sucesso!")
+                        st.success(f"Corte {corte_row['nome_corte']} atualizado!")
                         st.rerun()
                         
                     if col_btn_excluir.button("🗑️ Excluir", key=f"del_c_{corte_row['id']}"):
@@ -219,29 +217,25 @@ elif menu == "Histórico & Edição":
                         st.rerun()
                 st.markdown("---")
 
-        # --- MATEMÁTICA E CÁLCULO DOS INDICADORES CONFORME A PLANILHA ---
+        # --- RE-CÁLCULO DOS INDICADORES FIÉIS À PLANILHA ---
         p_bruto = acao_row["peso_bruto"]
         p_comp_kg = acao_row["preco_animal_kg"]
         valor_total_compra = p_bruto * p_comp_kg
         
-        # Faturamento de vendas por qualidade
         total_vendas_ouro = sum(df_cortes[df_cortes["qualidade"] == "OURO"]["peso"] * df_cortes[df_cortes["qualidade"] == "OURO"]["preco_venda"])
         total_vendas_prata = sum(df_cortes[df_cortes["qualidade"] == "PRATA"]["peso"] * df_cortes[df_cortes["qualidade"] == "PRATA"]["preco_venda"])
         total_vendas_total = total_vendas_ouro + total_vendas_prata
         
-        # Coeficiente Geral
         coeficiente = valor_total_compra / total_vendas_total if total_vendas_total > 0 else 0
         
-        # Preço total de compra proporcional
         compra_ouro = total_vendas_ouro * coeficiente
         compra_prata = total_vendas_prata * coeficiente
         
-        # Pesos desossados
         peso_desossado_ouro = sum(df_cortes[df_cortes["qualidade"] == "OURO"]["peso"])
         peso_desossado_prata = sum(df_cortes[df_cortes["qualidade"] == "PRATA"]["peso"])
         peso_desossado_total = peso_desossado_ouro + peso_desossado_prata
         
-        # Custo Efetivo Total com reprodução fiel do "bug" da planilha original
+        # Custo Efetivo Total (Replicando o cálculo exato do Excel)
         custo_efetivo_total_ouro = 0
         custo_efetivo_total_prata = 0
         
@@ -250,11 +244,10 @@ elif menu == "Histórico & Edição":
             p_venda = row['preco_venda']
             p_custo_kg = p_venda * coeficiente
             
-            # Taxa de embalagem L17 = 0.0003
-            # Se for a primeira linha (Bisteca - index 0): multiplica pelo Preço de Venda
+            # Ajuste exato das fórmulas do Excel (Bisteca multiplica pelo preço; outros pelo peso)
             if i == 0:
                 embalagem = 0.0003 * p_venda
-            else: # Todas as outras linhas: multiplica pelo Peso
+            else:
                 embalagem = 0.0003 * peso
                 
             custo_efetivo_kg = p_custo_kg + embalagem
@@ -281,35 +274,55 @@ elif menu == "Histórico & Edição":
         markup_prata = (total_vendas_prata / custo_efetivo_total_prata) - 1 if custo_efetivo_total_prata > 0 else 0
         markup_total = (total_vendas_total / custo_efetivo_total_geral) - 1 if custo_efetivo_total_geral > 0 else 0
         
-        # Preço Médio de Compra
+        # Preços Médios de Compra (SEM e COM Custo Variável)
         p_medio_compra_ouro = compra_ouro / peso_desossado_ouro if peso_desossado_ouro > 0 else 0
         p_medio_compra_prata = compra_prata / peso_desossado_prata if peso_desossado_prata > 0 else 0
         p_medio_compra_total = valor_total_compra / peso_desossado_total if peso_desossado_total > 0 else 0
         
-        # --- EXIBIÇÃO DA TABELA DE INDICADORES EXATOS ---
+        p_medio_compra_com_ouro = custo_efetivo_total_ouro / peso_desossado_ouro if peso_desossado_ouro > 0 else 0
+        p_medio_compra_com_prata = custo_efetivo_total_prata / peso_desossado_prata if peso_desossado_prata > 0 else 0
+        p_medio_compra_com_total = custo_efetivo_total_geral / peso_desossado_total if peso_desossado_total > 0 else 0
+        
+        # Preço Médio de Venda (ÚLTIMA LINHA DA PLANILHA)
+        p_medio_venda_ouro = total_vendas_ouro / peso_desossado_ouro if peso_desossado_ouro > 0 else 0
+        p_medio_venda_prata = total_vendas_prata / peso_desossado_prata if peso_desossado_prata > 0 else 0
+        p_medio_venda_total = total_vendas_total / peso_desossado_total if peso_desossado_total > 0 else 0
+        
+        # --- EXIBIÇÃO DA TABELA DE INDICADORES EXATAMENTE COMO NO EXCEL ---
         st.markdown("---")
         st.subheader(f"📊 Quadro de Indicadores - Lote #{id_selecionado}")
         
         indicadores_data = {
             "INDICADORES": [
-                "PREÇO TOTAL/Compra Sem Custos Variáveis", "PREÇO TOTAL/Venda", "Peso Desossado", 
-                "COEFICIENTE", "Custo Efetivo Total", "Margem de Contribuição R$", 
-                "Margem de Contribuição %", "Markup", "Preço médio de Compra/KG SEM-Custo Variável"
+                "PREÇO TOTAL/Compra Sem Custos Variáveis", 
+                "PREÇO TOTAL/Venda", 
+                "Peso Desossado", 
+                "COEFICIENTE", 
+                "Custo Efetivo Total", 
+                "Margem de Contribuição R$", 
+                "Margem de Contribuição %", 
+                "Markup", 
+                "Preço médio de Compra/KG SEM-Custo Variável",
+                "Preço médio de Compra/KG COM-Custo Variável",
+                "Preço médio de Venda/KG"
             ],
             "OURO": [
                 f"R$ {compra_ouro:.2f}", f"R$ {total_vendas_ouro:.2f}", f"{peso_desossado_ouro:.3f} KG",
                 f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_ouro:.2f}", f"R$ {margem_r_ouro:.2f}",
-                f"{margem_p_ouro*100:.2f}%", f"{markup_ouro*100:.2f}%", f"R$ {p_medio_compra_ouro:.2f}"
+                f"{margem_p_ouro*100:.2f}%", f"{markup_ouro*100:.2f}%", f"R$ {p_medio_compra_ouro:.2f}",
+                f"R$ {p_medio_compra_com_ouro:.2f}", f"R$ {p_medio_venda_ouro:.2f}"
             ],
             "PRATA": [
                 f"R$ {compra_prata:.2f}", f"R$ {total_vendas_prata:.2f}", f"{peso_desossado_prata:.3f} KG",
                 f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_prata:.2f}", f"R$ {margem_r_prata:.2f}",
-                f"{margem_p_prata*100:.2f}%", f"{markup_prata*100:.2f}%", f"R$ {p_medio_compra_prata:.2f}"
+                f"{margem_p_prata*100:.2f}%", f"{markup_prata*100:.2f}%", f"R$ {p_medio_compra_prata:.2f}",
+                f"R$ {p_medio_compra_com_prata:.2f}", f"R$ {p_medio_venda_prata:.2f}"
             ],
             "Total": [
                 f"R$ {valor_total_compra:.2f}", f"R$ {total_vendas_total:.2f}", f"{peso_desossado_total:.3f} KG",
                 f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_geral:.2f}", f"R$ {margem_r_total:.2f}",
-                f"{margem_p_total*100:.2f}%", f"{markup_total*100:.2f}%", f"R$ {p_medio_compra_total:.2f}"
+                f"{margem_p_total*100:.2f}%", f"{markup_total*100:.2f}%", f"R$ {p_medio_compra_total:.2f}",
+                f"R$ {p_medio_compra_com_total:.2f}", f"R$ {p_medio_venda_total:.2f}"
             ]
         }
         
@@ -322,7 +335,7 @@ elif menu == "Histórico & Edição":
         df_cortes_calc["Preço de Custo / KG"] = df_cortes_calc["preco_venda"] * coeficiente
         df_cortes_calc["Preço de Custo Total"] = df_cortes_calc["Valor Total Venda"] * coeficiente
         df_cortes_calc["Lucro Bruto"] = df_cortes_calc["Valor Total Venda"] - df_cortes_calc["Preço de Custo Total"]
-        df_cortes_calc["Rendimento %"] = (df_cortes_calc["peso"] / p_bruto) * 100
+        df_cortes_calc["Rendimento %"] = (df_cortes_calc["peso"] / p_bruto) * 100 if p_bruto > 0 else 0
         
         df_formatado = df_cortes_calc.rename(columns={
             "nome_corte": "Corte",
