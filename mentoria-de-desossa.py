@@ -9,46 +9,48 @@ from fpdf import FPDF
 # --- 1. CONFIGURAÇÃO VISUAL DA PÁGINA ---
 st.set_page_config(page_title="Gestão de Desossa - Renato Frigotudo", layout="wide")
 
-# --- 2. ESTILO CSS PERSONALIZADO (ALTO CONTRASTE) ---
-# Atualizámos as cores para garantir maior legibilidade (Textos mais escuros, fundos mais limpos e botões destacados)
+# --- 2. ESTILO CSS PERSONALIZADO (ALTO CONTRASTE E LEGIBILIDADE) ---
 st.markdown(
     """
     <style>
-    /* Fundo geral mais claro e limpo para contraste máximo com o texto */
+    /* Fundo claro de alto contraste e textos principais muito escuros */
     .stApp {
-        background-color: #F8FAFC;
+        background-color: #FFFFFF;
         font-family: 'Helvetica Neue', Arial, sans-serif;
-        color: #0F172A; /* Texto geral em cinza quase preto */
+        color: #0F172A; 
     }
     
-    /* Inputs com bordas mais escuras e nítidas para facilitar a visualização */
+    /* Campos de entrada com bordas escuras e bem visíveis */
     div[data-testid="stTextInput"] input, div[data-testid="stNumberInput"] input, div[data-testid="stSelectbox"] select {
-        border: 2px solid #1E3A8A !important;
+        border: 2px solid #0F172A !important;
         border-radius: 6px;
         color: #0F172A !important;
         background-color: #FFFFFF !important;
-    }
-    
-    /* Rótulos (labels) dos campos com contraste reforçado */
-    label {
-        color: #1E293B !important;
         font-weight: bold !important;
     }
     
-    /* Botões principais com azul de alto contraste e texto em branco puro */
+    /* Nomes dos campos (labels) em negrito e cor escura forte */
+    label {
+        color: #0F172A !important;
+        font-weight: bold !important;
+        font-size: 15px !important;
+    }
+    
+    /* Botões principais em Azul Forte com letras em Branco Puro */
     div.stButton > button:first-child {
         background-color: #1E3A8A !important;
         color: #FFFFFF !important;
         border-radius: 6px;
-        border: 2px solid #172554;
+        border: 2px solid #0F172A;
         padding: 10px 20px;
         font-weight: bold;
+        font-size: 16px;
         transition: all 0.2s ease;
     }
     div.stButton > button:first-child:hover {
-        background-color: #1D4ED8 !important;
+        background-color: #2563EB !important;
         color: #FFFFFF !important;
-        border-color: #1E40AF;
+        border-color: #1D4ED8;
     }
     
     /* Botões dentro de formulários */
@@ -58,36 +60,35 @@ st.markdown(
         border-radius: 6px !important;
     }
     form button:hover {
-        background-color: #1D4ED8 !important;
+        background-color: #2563EB !important;
     }
     
-    /* Títulos em Azul Escuro extra forte para contraste imediato */
+    /* Títulos em destaque máximo */
     h1, h2, h3, h4 {
-        color: #0F172A !important; /* Quase preto para leitura perfeita */
+        color: #0F172A !important; 
         font-weight: 800 !important;
     }
     
-    /* Customização do menu lateral (Sidebar) com fundo contrastante */
+    /* Menu Lateral com fundo cinza-claro contrastando com texto escuro */
     section[data-testid="stSidebar"] {
-        background-color: #F1F5F9 !important;
-        border-right: 2px solid #E2E8F0;
+        background-color: #F8FAFC !important;
+        border-right: 3px solid #0F172A;
     }
-    
-    /* Estilização de textos secundários dentro da barra lateral */
     section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] span {
-        color: #1E293B !important;
-        font-weight: 500;
+        color: #0F172A !important;
+        font-weight: bold !important;
     }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# --- 3. BANCO DE DADOS INTELIGENTE (COM ISOLAMENTO POR EMPRESA) ---
+# --- 3. BANCO DE DADOS INTELIGENTE (CORREÇÃO AUTOMÁTICA DE COLUNAS) ---
 def init_db():
     conn = sqlite3.connect("desossa_db.db")
     cursor = conn.cursor()
     
+    # Tabela de Empresas
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS empresas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -98,6 +99,7 @@ def init_db():
         )
     """)
     
+    # Tabela de Tipos de Desossa
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS tipos_desossa (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -107,6 +109,14 @@ def init_db():
         )
     """)
     
+    # --- AJUSTE AUTOMÁTICO: Adiciona a coluna empresa_id se ela não existir no seu banco antigo ---
+    try:
+        cursor.execute("ALTER TABLE tipos_desossa ADD COLUMN empresa_id INTEGER DEFAULT NULL")
+    except sqlite3.OperationalError:
+        # Se cair aqui, significa que a coluna já existe. Podemos continuar com segurança!
+        pass
+
+    # Tabela de Cortes Padrão
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS cortes_padrao (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -117,6 +127,7 @@ def init_db():
         )
     """)
     
+    # Tabela de Lotes (Ações)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS acoes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -132,6 +143,7 @@ def init_db():
         )
     """)
     
+    # Tabela de Cortes vinculados às ações
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS cortes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -144,6 +156,7 @@ def init_db():
         )
     """)
     
+    # Se os tipos de desossa estiverem vazios, insere carga inicial padrão (Global = NULL)
     cursor.execute("SELECT COUNT(*) FROM tipos_desossa")
     if cursor.fetchone()[0] == 0:
         tipos_iniciais = [
@@ -155,6 +168,7 @@ def init_db():
         ]
         cursor.executemany("INSERT INTO tipos_desossa (nome, empresa_id) VALUES (?, ?)", tipos_iniciais)
     
+    # Carga inicial global de cortes (Global = NULL)
     cursor.execute("SELECT COUNT(*) FROM cortes_padrao")
     if cursor.fetchone()[0] == 0:
         cortes_iniciais = [
@@ -240,7 +254,7 @@ def exibir_cabecalho(nome_empresa="RENATO FRIGOTUDO & ASSOCIADOS"):
                 <h1 style="margin: 0; color: #1E3A8A; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 26px; font-weight: bold; letter-spacing: 1px;">
                     {nome_empresa.upper()}
                 </h1>
-                <p style="margin: 0; color: #334155; font-size: 15px; font-weight: bold;">
+                <p style="margin: 0; color: #0F172A; font-size: 15px; font-weight: bold;">
                     Rua Paraíso, nº 514 • Pompéu/MG
                 </p>
             </div>
@@ -755,7 +769,7 @@ else:
                         """, (str(ed_data), ed_tipo, ed_p_bruto, ed_preco_animal, ed_ossos, ed_quebra, ed_exsudato, id_selecionado, emp_id_ativo))
                         conn.commit()
                         conn.close()
-                        st.success("✅ Carcaça atualizada!")
+                        st.success("✅ Carcaça updated!")
                         st.rerun()
 
                 # --- GERENCIAMENTO DE CORTES ---
@@ -798,9 +812,6 @@ else:
                 
                 peso_final = p_bruto - ossos_val - quebra_val - exsudato_val
                 total_quebra = ossos_val + quebra_val + exsudato_val
-                
-                def formatar_peso_visual(v):
-                    return f"{v:.3f}" if v > 0.0 else ""
                 
                 porc_ossos = (ossos_val / p_bruto * 100) if p_bruto > 0 else 0.0
                 porc_quebra = (quebra_val / p_bruto * 100) if p_bruto > 0 else 0.0
@@ -951,11 +962,10 @@ else:
                 
                 df_com_total = pd.concat([df_final, linha_total], ignore_index=True)
                 
-                # --- Estilização com contraste de acessibilidade para Margem <= 0 ---
+                # --- Estilização para Margem <= 0 (Fiel à cor Vermelho da Planilha com alto contraste) ---
                 def estilizar_margem_bruta(val):
                     try:
                         if isinstance(val, (int, float)) and val <= 0:
-                            # Vermelho vivo com texto em preto para garantir que o contraste atinja o nível de acessibilidade
                             return 'background-color: #EF4444; color: #FFFFFF; font-weight: bold; border: 2px solid #991B1B;'
                     except:
                         pass
@@ -981,16 +991,16 @@ else:
                     pdf.add_page()
                     pdf.set_font("Arial", size=12)
                     
-                    # Cabeçalho Principal do PDF em Azul de Alto Contraste
-                    pdf.set_fill_color(30, 58, 138) # Azul Forte (#1E3A8A)
+                    # Cabeçalho Principal do PDF
+                    pdf.set_fill_color(30, 58, 138) # Azul Forte
                     pdf.rect(10, 10, 190, 15, "F")
-                    pdf.set_text_color(255, 255, 255) # Branco Puro
+                    pdf.set_text_color(255, 255, 255)
                     pdf.set_font("Arial", style="B", size=12)
                     nome_formatado = st.session_state.empresa_nome.upper().encode("latin1", "replace").decode("latin1")
                     pdf.set_xy(10, 13.5)
                     pdf.cell(190, 8, nome_formatado, ln=1, align="C")
                     
-                    pdf.set_text_color(15, 23, 42) # Cinza escuro (#0F172A)
+                    pdf.set_text_color(15, 23, 42)
                     pdf.set_font("Arial", size=9)
                     endereco_txt = "Rua Paraiso, n. 514 - Pompeu/MG".encode("latin1", "replace").decode("latin1")
                     pdf.set_xy(10, 27)
@@ -1007,7 +1017,7 @@ else:
                     pdf.ln(2)
                     
                     # Apuração Geral
-                    pdf.set_fill_color(226, 232, 240) # Fundo mais contrastante
+                    pdf.set_fill_color(226, 232, 240)
                     pdf.set_font("Arial", style="B", size=10)
                     pdf.cell(190, 7, "APURACAO GERAL DO LOTE", ln=1, fill=True, align="C")
                     pdf.set_font("Arial", size=8)
@@ -1032,11 +1042,11 @@ else:
                     pdf.ln(4)
                     
                     # Indicadores
-                    pdf.set_fill_color(34, 197, 94) # Verde-folha forte (#22C55E)
+                    pdf.set_fill_color(34, 197, 94) # Verde-folha forte
                     pdf.set_font("Arial", style="B", size=10)
-                    pdf.set_text_color(255, 255, 255) # Texto em branco para contraste perfeito com fundo verde
+                    pdf.set_text_color(255, 255, 255)
                     pdf.cell(190, 7, "QUADRO DE INDICADORES", ln=1, fill=True, align="C")
-                    pdf.set_text_color(15, 23, 42) # Volta para cor escura
+                    pdf.set_text_color(15, 23, 42)
                     pdf.set_font("Arial", size=8)
                     pdf.cell(70, 6, "INDICADOR", border=1, fill=True)
                     pdf.cell(40, 6, "OURO", border=1, align="C", fill=True)
@@ -1064,7 +1074,7 @@ else:
                     pdf.ln(4)
                     
                     # Detalhamento de Cortes
-                    pdf.set_fill_color(234, 179, 8) # Amarelo escuro forte (#EAB308)
+                    pdf.set_fill_color(234, 179, 8) # Amarelo escuro
                     pdf.set_font("Arial", style="B", size=9)
                     pdf.set_text_color(0, 0, 0)
                     pdf.cell(190, 8, "DETALHAMENTO DE CORTES E MARGENS", ln=1, fill=True, align="C")
@@ -1091,12 +1101,12 @@ else:
                         pdf.cell(18, 5, f"R$ {r_corte['Custo por KG']:.2f}", border=1, align="C")
                         pdf.cell(22, 5, f"R$ {r_corte['Custo Total']:.2f}", border=1, align="C")
                         
-                        # DESTAQUE CONDICIONAL DE ALTO CONTRASTE NO PDF (Vermelho puro com texto em branco)
+                        # DESTAQUE DE MARGEM NEGATIVA NO PDF (Fiel à Planilha - Fundo Vermelho e Texto Branco)
                         if marg_val <= 0:
-                            pdf.set_fill_color(239, 68, 68) # Vermelho vibrante (#EF4444)
-                            pdf.set_text_color(255, 255, 255) # Texto em Branco Puro para legibilidade máxima
+                            pdf.set_fill_color(239, 68, 68) 
+                            pdf.set_text_color(255, 255, 255) 
                             pdf.cell(25, 5, f"R$ {marg_val:.2f}", border=1, align="C", fill=True)
-                            pdf.set_text_color(15, 23, 42) # Reseta para o cinza escuro original
+                            pdf.set_text_color(15, 23, 42) 
                         else:
                             pdf.cell(25, 5, f"R$ {marg_val:.2f}", border=1, align="C")
                             
