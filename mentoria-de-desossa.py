@@ -2,9 +2,10 @@ import streamlit as st
 import pandas as pd
 import sqlite3
 import datetime
+import os
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="Mentoria de Desossa - Tangará", layout="wide")
+st.set_page_config(page_title="Mentoria de Desossa - Renato Frigotudo", layout="wide")
 
 # --- CONEXÃO COM O BANCO DE DADOS ---
 def init_db():
@@ -43,9 +44,38 @@ init_db()
 def get_connection():
     return sqlite3.connect("desossa_db.db")
 
+# --- FUNÇÃO DO CABEÇALHO PADRONIZADO (REPLICANDO O MODELO) ---
+def exibir_cabecalho():
+    col_logo, col_info = st.columns([1, 4])
+    
+    with col_logo:
+        # Tenta carregar o logo oficial local, senão exibe um placeholder
+        if os.path.exists("logo_renato.png"):
+            st.image("logo_renato.png", width=120)
+        else:
+            st.markdown("### 🍖 [LOGO]")
+            
+    with col_info:
+        st.markdown(
+            """
+            <div style="padding-top: 10px;">
+                <h1 style="margin: 0; color: #1C3D5A; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 28px; font-weight: bold; letter-spacing: 1px;">
+                    RENATO FRIGOTUDO & ASSOCIADOS
+                </h1>
+                <p style="margin: 0; color: #555555; font-size: 16px; font-weight: 500;">
+                    Rua Paraíso, nº 514 • Pompéu/MG
+                </p>
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
+    # Linha divisória fina e elegante de separação
+    st.markdown("<hr style='margin-top: 5px; margin-bottom: 25px; border-top: 1px solid #e0e0e0;'>", unsafe_allow_html=True)
+
 # --- INTERFACE ---
-st.title("🍖 Sistema de Mentoria de Desossa & Indicadores")
-st.markdown("Replicador fiel do modelo de inteligência de custos da desossa.")
+
+# Adiciona o cabeçalho padronizado no topo de todas as telas
+exibir_cabecalho()
 
 # Sidebar para Navegação
 menu = st.sidebar.selectbox("Menu de Operações", ["Nova Desossa", "Histórico & Edição"])
@@ -235,7 +265,7 @@ elif menu == "Histórico & Edição":
         def formatar_peso_visual(v):
             return f"{v:.3f}" if v > 0.0 else ""
         
-        # --- TABELA DE APURAÇÃO DO ANIMAL (REPLICANDO EXATAMENTE A PRIMEIRA IMAGEM) ---
+        # --- TABELA DE APURAÇÃO DO ANIMAL ---
         st.subheader("📊 Apuração Geral do Lote")
         
         apuracao_data = {
@@ -427,7 +457,7 @@ elif menu == "Histórico & Edição":
             "Rendimento %": total_rendimento
         }])
         
-        df_com_total = pd.concat([df_final, line_total if 'line_total' in locals() else linha_total], ignore_index=True)
+        df_com_total = pd.concat([df_final, linha_total], ignore_index=True)
         
         # Renderização visual com tratamento das colunas de preços por KG no Total
         st.dataframe(df_com_total.style.format({
