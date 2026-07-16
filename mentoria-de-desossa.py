@@ -24,12 +24,11 @@ def init_db():
         )
     """)
     
-    # ATUALIZAÇÃO AUTOMÁTICA: Adiciona a coluna 'ativo' se ela não existir de testes anteriores
+    # ATUALIZAÇÃO AUTOMÁTICA: Adiciona a coluna 'ativo' se ela não existir
     try:
         cursor.execute("ALTER TABLE empresas ADD COLUMN ativo INTEGER DEFAULT 1")
         conn.commit()
     except sqlite3.OperationalError:
-        # Se a coluna já existir, o SQLite retorna erro e nós apenas ignoramos
         pass
     
     # Tabela de desossa vinculada à empresa dona dos dados
@@ -116,7 +115,7 @@ if not st.session_state.logado:
         btn_entrar = st.form_submit_button("Entrar no Sistema")
         
         if btn_entrar:
-            # .strip() remove espaços extras acidentais; .lower() converte para minúsculas
+            # Tratamento de espaços extras e conversão para minúsculas para evitar erros de digitação
             login_formatado = campo_login.strip().lower() 
             
             # 1. Verifica primeiro se é o Administrador Geral
@@ -253,10 +252,9 @@ else:
                                 st.rerun()
                                 
                     with col_btn_edit:
-                        # Botão para expandir/ocultar o painel de edição desta empresa específica
                         expandir_edicao = st.checkbox("✏️ Editar", key=f"expand_edit_{emp_id}")
 
-                    # Se o botão de edição correspondente for clicado, exibe o formulário de edição
+                    # Formulário de Edição da Empresa
                     if expandir_edicao:
                         with st.container():
                             st.markdown(f"##### Editar Informações - {emp_nome.upper()}")
@@ -289,7 +287,7 @@ else:
                                             
                     st.markdown("<hr style='margin: 4px 0; border-top: 1px dashed #e0e0e0;'>", unsafe_allow_html=True)
 
-    # ==================== TELAS DAS EMPRESAS PARCEIRAS ====================
+    # ==================== TELAS DAS EMPRESAS PARCEIRAS (ACESSO OPERACIONAL) ====================
     else:
         # ==================== TELA: NOVA DESOSSA ====================
         if menu == "Nova Desossa":
@@ -374,6 +372,7 @@ else:
             st.header("📂 Histórico & Edição de Desossas")
             
             conn = get_connection()
+            # Este SELECT filtra os lotes unicamente pela empresa ativa logada!
             df_acoes = pd.read_sql_query(f"SELECT * FROM acoes WHERE empresa_id = {st.session_state.empresa_id} ORDER BY data_acao DESC", conn)
             conn.close()
             
@@ -458,7 +457,7 @@ else:
                                 st.rerun()
                         st.markdown("---")
 
-                # --- CÁLCULOS E MATEMÁTICA ---
+                # --- CÁLCULOS E RENDIMENTOS ---
                 p_bruto = acao_row["peso_bruto"]
                 p_comp_kg = acao_row["preco_animal_kg"]
                 valor_total_compra = p_bruto * p_comp_kg
@@ -485,7 +484,7 @@ else:
                 }
                 st.table(pd.DataFrame(apuracao_data).set_index("Apuração do Lote"))
 
-                # --- FINANCEIROS ---
+                # --- CONTROLES FINANCEIROS ---
                 total_vendas_ouro = sum(df_cortes[df_cortes["qualidade"] == "OURO"]["peso"] * df_cortes[df_cortes["qualidade"] == "OURO"]["preco_venda"])
                 total_vendas_prata = sum(df_cortes[df_cortes["qualidade"] == "PRATA"]["peso"] * df_cortes[df_cortes["qualidade"] == "PRATA"]["preco_venda"])
                 total_vendas_total = total_vendas_ouro + total_vendas_prata
@@ -499,7 +498,7 @@ else:
                 peso_desossado_prata = sum(df_cortes[df_cortes["qualidade"] == "PRATA"]["peso"])
                 peso_desossado_total = peso_desossado_ouro + peso_desossado_prata
                 
-                # Ajuste de Embalagem conforme a aba SUINO vs BOVINO
+                # Ajuste de Embalagem conforme a categoria do lote
                 custo_efetivo_total_ouro = 0
                 custo_efetivo_total_prata = 0
                 taxa_embalagem = 0.0 if tipo_animal_atual == "SUINO" else 0.0003
