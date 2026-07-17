@@ -205,21 +205,43 @@ def get_tipos_desossa(empresa_id):
     conn.close()
     return tipos
 
-# --- 4. CONTROLE DE ESTADOS DO FORMULÁRIO (CORREÇÃO COMPLETA ANTI-ERRO) ---
+# --- 4. CONTROLE DE ESTADOS DO FORMULÁRIO ---
 def init_form_states():
     if "input_data" not in st.session_state:
         st.session_state.input_data = datetime.date.today()
+    if "input_peso_bruto" not in st.session_state:
+        st.session_state.input_peso_bruto = 0.0
+    if "input_preco_animal" not in st.session_state:
+        st.session_state.input_preco_animal = 0.0
+    if "input_ossos" not in st.session_state:
+        st.session_state.input_ossos = 0.0
+    if "input_quebra" not in st.session_state:
+        st.session_state.input_quebra = 0.0
+    if "input_exsudato" not in st.session_state:
+        st.session_state.input_exsudato = 0.0
+    if "input_corte_nome_manual" not in st.session_state:
+        st.session_state.input_corte_nome_manual = ""
+    if "input_corte_peso" not in st.session_state:
+        st.session_state.input_corte_peso = 0.0
+    if "input_corte_preco" not in st.session_state:
+        st.session_state.input_corte_preco = 0.0
     if "uploader_key" not in st.session_state:
         st.session_state.uploader_key = 0
-    if "cortes_temp" not in st.session_state:
-        st.session_state.cortes_temp = []
 
 def reset_form_states():
-    # Eliminadas totalmente as atribuições diretas de chaves associadas a inputs numéricos activos
     st.session_state.input_data = datetime.date.today()
+    st.session_state.input_peso_bruto = 0.0
+    st.session_state.input_preco_animal = 0.0
+    st.session_state.input_ossos = 0.0
+    st.session_state.input_quebra = 0.0
+    st.session_state.input_exsudato = 0.0
+    st.session_state.input_corte_nome_manual = ""
+    st.session_state.input_corte_peso = 0.0
+    st.session_state.input_corte_preco = 0.0
     st.session_state.cortes_temp = []
 
-# --- 5. CABEÇALHO PADRONIZADO ---
+# --- 5. CABEÇALHO PADRONIZADO (ALTERADO) ---
+# Agora exibe obrigatoriamente "RENATO FRIGOTUDO & ASSOCIADOS" no topo e a empresa usuária logo abaixo
 def exibir_cabecalho(nome_empresa_usuaria=None):
     col_logo, col_info = st.columns([1, 4])
     with col_logo:
@@ -228,8 +250,10 @@ def exibir_cabecalho(nome_empresa_usuaria=None):
         else:
             st.markdown("### 🍖 [LOGO]")
     with col_info:
+        # Título principal fixado em "RENATO FRIGOTUDO & ASSOCIADOS"
         cabecalho_principal = "RENATO FRIGOTUDO & ASSOCIADOS"
         
+        # Define o texto da empresa usuária abaixo do cabeçalho
         if nome_empresa_usuaria:
             subtitulo_empresa = nome_empresa_usuaria.upper()
         else:
@@ -343,6 +367,7 @@ else:
         reset_form_states()
         st.rerun()
 
+    # Chamada unificada do cabeçalho passando a empresa atualmente conectada
     exibir_cabecalho(nome_empresa_usuaria=st.session_state.empresa_nome)
     
     if st.session_state.e_admin:
@@ -694,61 +719,13 @@ else:
                     st.session_state.input_data = data_input
                     
                     tipo_animal = st.selectbox("Tipo de Desossa", tipos_empresa, key="tipo_animal_select")
-                    peso_bruto = st.number_input("Peso Bruto (KG)", min_value=0.0, step=0.001, format="%.3f")
-                    preco_animal_kg = st.number_input("Preço do Animal (R$/KG)", min_value=0.0, step=0.01)
+                    peso_bruto = st.number_input("Peso Bruto (KG)", min_value=0.0, step=0.001, format="%.3f", key="input_peso_bruto")
+                    preco_animal_kg = st.number_input("Preço do Animal (R$/KG)", min_value=0.0, step=0.01, key="input_preco_animal")
                     
                 with col2:
-                    ossos_muxiba = st.number_input("Ossos / Muxiba (KG)", min_value=0.0, step=0.001, format="%.3f")
-                    quebra_nao_identificada = st.number_input("Quebra Não Identificada (KG)", min_value=0.0, step=0.001, format="%.3f")
-                    exsudato_escorrimento = st.number_input("Exsudato / Escorrimento (KG)", min_value=0.0, step=0.001, format="%.3f")
-
-                # --- 📥 LEITURA EM CASCATA ANTI-TRAVAMENTO (CSV) ---
-                st.markdown("---")
-                st.subheader("📥 Pré-carregamento Rápido de Cortes do Lote (CSV)")
-                st.write("Faça o upload do arquivo CSV contendo as colunas: `nome_corte`, `peso` e `preco_venda`.")
-                uploaded_lote_file = st.file_uploader("Selecionar Arquivo CSV de Cortes", type=["csv"], key="lote_csv_up")
-                
-                if uploaded_lote_file is not None:
-                    try:
-                        df_lote_csv = None
-                        for separador in [";", ","]:
-                            for encodificacao in ["utf-8", "latin-1"]:
-                                try:
-                                    uploaded_lote_file.seek(0)
-                                    df_teste = pd.read_csv(uploaded_lote_file, sep=separador, encoding=encodificacao)
-                                    df_teste.columns = [str(c).strip().lower() for c in df_teste.columns]
-                                    if "nome_corte" in df_teste.columns:
-                                        df_lote_csv = df_teste
-                                        break
-                                except:
-                                    continue
-                            if df_lote_csv is not None:
-                                break
-                        
-                        if df_lote_csv is None:
-                            st.error("❌ Erro ao analisar a planilha. Certifique-se de que o arquivo é um CSV válido com a coluna 'nome_corte'.")
-                        else:
-                            for col_obrigatória in ["peso", "preco_venda"]:
-                                if col_obrigatória not in df_lote_csv.columns:
-                                    df_lote_csv[col_obrigatória] = 0.0
-                                    
-                            if st.button("🔄 Aplicar Cortes da Planilha ao Lote Provisório"):
-                                st.session_state.cortes_temp = []
-                                for _, r_lote in df_lote_csv.iterrows():
-                                    if pd.notnull(r_lote["nome_corte"]) and str(r_lote["nome_corte"]).strip() != "":
-                                        peso_val = str(r_lote["peso"]).replace(",", ".") if isinstance(r_lote["peso"], str) else r_lote["peso"]
-                                        preco_val = str(r_lote["preco_venda"]).replace(",", ".") if isinstance(r_lote["preco_venda"], str) else r_lote["preco_venda"]
-                                        
-                                        st.session_state.cortes_temp.append({
-                                            "nome_corte": str(r_lote["nome_corte"]).strip().upper(),
-                                            "qualidade": "OURO",
-                                            "peso": float(peso_val) if pd.notnull(peso_val) else 0.0,
-                                            "preco_venda": float(preco_val) if pd.notnull(preco_val) else 0.0
-                                        })
-                                st.success(f"🎉 Encontrados e carregados {len(st.session_state.cortes_temp)} cortes com sucesso!")
-                                st.rerun()
-                    except Exception as e:
-                        st.error(f"Erro ao processar planilha: {e}")
+                    ossos_muxiba = st.number_input("Ossos / Muxiba (KG)", min_value=0.0, step=0.001, format="%.3f", key="input_ossos")
+                    quebra_nao_identificada = st.number_input("Quebra Não Identificada (KG)", min_value=0.0, step=0.001, format="%.3f", key="input_quebra")
+                    exsudato_escorrimento = st.number_input("Exsudato / Escorrimento (KG)", min_value=0.0, step=0.001, format="%.3f", key="input_exsudato")
 
                 st.subheader("🥩 Cortes do Lote")
                 
@@ -762,17 +739,20 @@ else:
                 
                 lista_cortes_disponiveis = df_rec_cortes["nome_corte"].tolist() if not df_rec_cortes.empty else []
                 
+                if "cortes_temp" not in st.session_state:
+                    st.session_state.cortes_temp = []
+                    
                 with st.form("adicionar_corte"):
                     col_c1, col_c2, col_c3, col_c4 = st.columns(4)
                     
                     if lista_cortes_disponiveis:
                         nome_corte = col_c1.selectbox("Corte Cadastrado", lista_cortes_disponiveis)
                     else:
-                        nome_corte = col_c1.text_input("Nome do Corte Manual")
+                        nome_corte = col_c1.text_input("Nome do Corte Manual", key="input_corte_nome_manual")
                         
                     qualidade = col_c2.selectbox("Qualidade", ["OURO", "PRATA"])
-                    peso_corte = col_c3.number_input("Peso do Corte (KG)", min_value=0.0, step=0.001, format="%.3f")
-                    preco_venda = col_c4.number_input("Preço de Venda (R$/KG)", min_value=0.0, step=0.01)
+                    peso_corte = col_c3.number_input("Peso do Corte (KG)", min_value=0.0, step=0.001, format="%.3f", key="input_corte_peso")
+                    preco_venda = col_c4.number_input("Preço de Venda (R$/KG)", min_value=0.0, step=0.01, key="input_corte_preco")
                     
                     submitted = st.form_submit_button("➕ Adicionar Corte")
                     if submitted and (nome_corte or (not lista_cortes_disponiveis and nome_corte != "")):
@@ -784,6 +764,9 @@ else:
                             "preco_venda": preco_venda
                         })
                         st.success(f"Adicionado!")
+                        st.session_state.input_corte_nome_manual = ""
+                        st.session_state.input_corte_peso = 0.0
+                        st.session_state.input_corte_preco = 0.0
                         st.rerun()
 
                 if st.session_state.cortes_temp:
@@ -860,17 +843,6 @@ else:
                 df_cortes = pd.read_sql_query(f"SELECT * FROM cortes WHERE acao_id = {id_selecionado}", conn)
                 conn.close()
                 
-                st.markdown("""
-                    <div style="background-color: #F1F5F9; padding: 12px; border-radius: 6px; border: 2px solid #0F172A; margin-top: 10px; margin-bottom: 15px;">
-                        <span style="color: #0F172A; font-weight: bold; font-size: 16px;">⚙️ AJUSTE DE TAXAS E CUSTOS VARIÁVEIS (%)</span>
-                    </div>
-                """, unsafe_allow_html=True)
-                col_tx1, col_tx2, col_tx3, col_tx4 = st.columns(4)
-                tx_cartao = col_tx1.number_input("Taxa de Cartão (%)", min_value=0.0, max_value=100.0, value=0.0, step=0.1, key="tx_cartao_input")
-                tx_imposto = col_tx2.number_input("Impostos (%)", min_value=0.0, max_value=100.0, value=0.0, step=0.1, key="tx_imposto_input")
-                tx_embalagem = col_tx3.number_input("Embalagens (%)", min_value=0.0, max_value=100.0, value=0.0, step=0.1, key="tx_embalagem_input")
-                tx_comissao = col_tx4.number_input("Comissão (%)", min_value=0.0, max_value=100.0, value=0.0, step=0.1, key="tx_comissao_input")
-
                 # --- EDICÃO DA CARCAÇA ---
                 with st.expander("📝 EDITAR DADOS GERAIS DA CARCAÇA"):
                     col_ed1, col_ed2 = st.columns(2)
@@ -894,7 +866,7 @@ else:
                         """, (str(ed_data), ed_tipo, ed_p_bruto, ed_preco_animal, ed_ossos, ed_quebra, ed_exsudato, id_selecionado, emp_id_ativo))
                         conn.commit()
                         conn.close()
-                        st.success("✅ Carcaça updated!")
+                        st.success("✅ Carcaça atualizada!")
                         st.rerun()
 
                 # --- GERENCIAMENTO DE CORTES ---
@@ -912,7 +884,7 @@ else:
                             cursor.execute("UPDATE cortes SET qualidade = ?, peso = ?, preco_venda = ? WHERE id = ?", (c_qual, c_peso, c_preco, corte_row["id"]))
                             conn.commit()
                             conn.close()
-                            st.success("Corte updated!")
+                            st.success("Corte atualizado!")
                             st.rerun()
                             
                         if col_btn_excluir.button("🗑️ Excluir", key=f"del_c_{corte_row['id']}"):
@@ -945,6 +917,7 @@ else:
                 porc_quebra = (quebra_val / p_bruto * 100) if p_bruto > 0 else 0.0
                 porc_exsudato = (exsudato_val / p_bruto * 100) if p_bruto > 0 else 0.0
                 porc_final = (peso_final / p_bruto * 100) if p_bruto > 0 else 0.0
+                porc_total_quebra = (total_quebra / p_bruto * 100) if p_bruto > 0 else 0.0
 
                 # Apuração Geral
                 st.subheader("📊 Apuração Geral do Lote")
@@ -952,52 +925,65 @@ else:
                     "Apuração do Lote": ["PESO BRUTO/KG", "OSSOS/MUXIBA", "QUEBRA NÃO IDENTIF", "ESCORRIMENTO", "Peso Final", "TOTAL DE QUEBRA"],
                     "Peso (KG)": [formatar_peso_visual(p_bruto), formatar_peso_visual(ossos_val), formatar_peso_visual(quebra_val), formatar_peso_visual(exsudato_val), formatar_peso_visual(peso_final), formatar_peso_visual(total_quebra)],
                     "R$": [f"R$ {valor_total_compra:.2f}", "-", "-", "-", f"R$ {valor_total_compra:.2f}", "-"],
-                    "Porcentagem": ["100,00%", f"{porc_ossos:.2f}%", f"{porc_quebra:.2f}%", f"{porc_exsudato:.2f}%", f"{porc_final:.2f}%", f"{total_quebra / p_bruto * 100:.2f}%"]
+                    "Porcentagem": ["100,00%", f"{porc_ossos:.2f}%", f"{porc_quebra:.2f}%", f"{porc_exsudato:.2f}%", f"{porc_final:.2f}%", f"{porc_total_quebra:.2f}%"]
                 }
                 st.table(pd.DataFrame(apuracao_data).set_index("Apuração do Lote"))
 
-                # Processamento dinâmico baseado em Matrizes e Coeficiente de Venda
-                df_cortes_calc = df_cortes.copy()
-                df_cortes_calc["Valor Total Venda"] = df_cortes_calc["peso"] * df_cortes_calc["preco_venda"]
-                total_vendas_total = df_cortes_calc["Valor Total Venda"].sum()
+                # Indicadores
+                total_vendas_ouro = sum(df_cortes[df_cortes["qualidade"] == "OURO"]["peso"] * df_cortes[df_cortes["qualidade"] == "OURO"]["preco_venda"])
+                total_vendas_prata = sum(df_cortes[df_cortes["qualidade"] == "PRATA"]["peso"] * df_cortes[df_cortes["qualidade"] == "PRATA"]["preco_venda"])
+                total_vendas_total = total_vendas_ouro + total_vendas_prata
                 
                 coeficiente = valor_total_compra / total_vendas_total if total_vendas_total > 0 else 0
-                df_cortes_calc["Preço de Custo / KG"] = df_cortes_calc["preco_venda"] * coeficiente
-                
-                # Aplicação das taxas variáveis sobre o Preço de Venda
-                soma_taxas_porc = (tx_cartao + tx_imposto + tx_embalagem + tx_comissao) / 100
-                df_cortes_calc["Despesas Variáveis por KG"] = df_cortes_calc["preco_venda"] * soma_taxas_porc
-                df_cortes_calc["Custo Efetivo por KG"] = df_cortes_calc["Preço de Custo / KG"] + df_cortes_calc["Despesas Variáveis por KG"]
-                df_cortes_calc["Custo Efetivo Total"] = df_cortes_calc["peso"] * df_cortes_calc["Custo Efetivo por KG"]
-                df_cortes_calc["Lucro Efetivo por Lote"] = df_cortes_calc["Valor Total Venda"] - df_cortes_calc["Custo Efetivo Total"]
-                df_cortes_calc["Rendimento %"] = (df_cortes_calc["peso"] / peso_final) * 100 if peso_final > 0 else 0
-
-                # Recálculo de Indicadores Agrupados
-                total_vendas_ouro = df_cortes_calc[df_cortes_calc["qualidade"] == "OURO"]["Valor Total Venda"].sum()
-                total_vendas_prata = df_cortes_calc[df_cortes_calc["qualidade"] == "PRATA"]["Valor Total Venda"].sum()
                 compra_ouro = total_vendas_ouro * coeficiente
                 compra_prata = total_vendas_prata * coeficiente
                 
-                peso_desossado_ouro = df_cortes_calc[df_cortes_calc["qualidade"] == "OURO"]["peso"].sum()
-                peso_desossado_prata = df_cortes_calc[df_cortes_calc["qualidade"] == "PRATA"]["peso"].sum()
+                peso_desossado_ouro = sum(df_cortes[df_cortes["qualidade"] == "OURO"]["peso"])
+                peso_desossado_prata = sum(df_cortes[df_cortes["qualidade"] == "PRATA"]["peso"])
                 peso_desossado_total = peso_desossado_ouro + peso_desossado_prata
                 
-                custo_efetivo_ouro = df_cortes_calc[df_cortes_calc["qualidade"] == "OURO"]["Custo Efetivo Total"].sum()
-                custo_efetivo_prata = df_cortes_calc[df_cortes_calc["qualidade"] == "PRATA"]["Custo Efetivo Total"].sum()
-                custo_efetivo_total_geral = custo_efetivo_ouro + custo_efetivo_prata
+                custo_efetivo_total_ouro = 0
+                custo_efetivo_total_prata = 0
+                taxa_embalagem = 0.0 if tipo_animal_atual == "SUINO" else 0.0003
                 
-                margem_r_ouro = total_vendas_ouro - custo_efetivo_ouro
-                margem_r_prata = total_vendas_prata - custo_efetivo_prata
+                for i, row_c in df_cortes.iterrows():
+                    peso = row_c['peso']
+                    p_venda = row_c['preco_venda']
+                    p_custo_kg = p_venda * coeficiente
+                    embalagem = taxa_embalagem * p_venda if i == 0 else taxa_embalagem * peso
+                    custo_efetivo_kg = p_custo_kg + embalagem
+                    custo_efetivo_total = peso * custo_efetivo_kg
+                    
+                    if row_c['qualidade'] == "OURO":
+                        custo_efetivo_total_ouro += custo_efetivo_total
+                    else:
+                        custo_efetivo_total_prata += custo_efetivo_total
+                        
+                custo_efetivo_total_geral = custo_efetivo_total_ouro + custo_efetivo_total_prata
+                margem_r_ouro = total_vendas_ouro - custo_efetivo_total_ouro
+                margem_r_prata = total_vendas_prata - custo_efetivo_total_prata
                 margem_r_total = total_vendas_total - custo_efetivo_total_geral
                 
                 margem_p_ouro = (margem_r_ouro / total_vendas_ouro) if total_vendas_ouro > 0 else 0
                 margem_p_prata = (margem_r_prata / total_vendas_prata) if total_vendas_prata > 0 else 0
                 st_margem_p_total = (margem_r_total / total_vendas_total) if total_vendas_total > 0 else 0
                 
-                markup_ouro = (total_vendas_ouro / custo_efetivo_ouro) - 1 if custo_efetivo_ouro > 0 else 0
-                markup_prata = (total_vendas_prata / custo_efetivo_prata) - 1 if custo_efetivo_prata > 0 else 0
+                markup_ouro = (total_vendas_ouro / custo_efetivo_total_ouro) - 1 if custo_efetivo_total_ouro > 0 else 0
+                markup_prata = (total_vendas_prata / custo_efetivo_total_prata) - 1 if custo_efetivo_total_prata > 0 else 0
                 markup_total = (total_vendas_total / custo_efetivo_total_geral) - 1 if custo_efetivo_total_geral > 0 else 0
-
+                
+                p_medio_compra_ouro = compra_ouro / peso_desossado_ouro if peso_desossado_ouro > 0 else 0
+                p_medio_compra_prata = compra_prata / peso_desossado_prata if peso_desossado_prata > 0 else 0
+                p_medio_compra_total = valor_total_compra / peso_desossado_total if peso_desossado_total > 0 else 0
+                
+                p_medio_compra_com_ouro = custo_efetivo_total_ouro / peso_desossado_ouro if peso_desossado_ouro > 0 else 0
+                p_medio_compra_com_prata = custo_efetivo_total_prata / peso_desossado_prata if peso_desossado_prata > 0 else 0
+                p_medio_compra_com_total = custo_efetivo_total_geral / peso_desossado_total if peso_desossado_total > 0 else 0
+                
+                p_medio_venda_ouro = total_vendas_ouro / peso_desossado_ouro if peso_desossado_ouro > 0 else 0
+                p_medio_venda_prata = total_vendas_prata / peso_desossado_prata if peso_desossado_prata > 0 else 0
+                p_medio_venda_total = total_vendas_total / peso_desossado_total if peso_desossado_total > 0 else 0
+                
                 # --- PALETA VERDE-LIMÃO (ALTO CONTRASTE) ---
                 st.markdown(
                     """
@@ -1016,21 +1002,21 @@ else:
                     ],
                     "OURO": [
                         f"R$ {compra_ouro:.2f}", f"R$ {total_vendas_ouro:.2f}", f"{peso_desossado_ouro:.3f}",
-                        f"{coeficiente:.6f}", f"R$ {custo_efetivo_ouro:.2f}", f"R$ {margem_r_ouro:.2f}",
-                        f"{margem_p_ouro*100:.2f}%", f"{markup_ouro*100:.2f}%", f"R$ {compra_ouro/peso_desossado_ouro if peso_desossado_ouro > 0 else 0:.2f}",
-                        f"R$ {custo_efetivo_ouro/peso_desossado_ouro if peso_desossado_ouro > 0 else 0:.2f}", f"R$ {total_vendas_ouro/peso_desossado_ouro if peso_desossado_ouro > 0 else 0:.2f}"
+                        f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_ouro:.2f}", f"R$ {margem_r_ouro:.2f}",
+                        f"{margem_p_ouro*100:.2f}%", f"{markup_ouro*100:.2f}%", f"R$ {p_medio_compra_ouro:.2f}",
+                        f"R$ {p_medio_compra_com_ouro:.2f}", f"R$ {p_medio_venda_ouro:.2f}"
                     ],
                     "PRATA": [
                         f"R$ {compra_prata:.2f}", f"R$ {total_vendas_prata:.2f}", f"{peso_desossado_prata:.3f}",
-                        f"{coeficiente:.6f}", f"R$ {custo_efetivo_prata:.2f}", f"R$ {margem_r_prata:.2f}",
-                        f"{margem_p_prata*100:.2f}%", f"{markup_prata*100:.2f}%", f"R$ {compra_prata/peso_desossado_prata if peso_desossado_prata > 0 else 0:.2f}",
-                        f"R$ {custo_efetivo_prata/peso_desossado_prata if peso_desossado_prata > 0 else 0:.2f}", f"R$ {total_vendas_prata/peso_desossado_prata if peso_desossado_prata > 0 else 0:.2f}"
+                        f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_prata:.2f}", f"R$ {margem_r_prata:.2f}",
+                        f"{margem_p_prata*100:.2f}%", f"{markup_prata*100:.2f}%", f"R$ {p_medio_compra_prata:.2f}",
+                        f"R$ {p_medio_compra_com_prata:.2f}", f"R$ {p_medio_venda_prata:.2f}"
                     ],
                     "Total": [
                         f"R$ {valor_total_compra:.2f}", f"R$ {total_vendas_total:.2f}", f"{peso_desossado_total:.3f}",
                         f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_geral:.2f}", f"R$ {margem_r_total:.2f}",
-                        f"{st_margem_p_total*100:.2f}%", f"{markup_total*100:.2f}%", f"R$ {valor_total_compra/peso_desossado_total if peso_desossado_total > 0 else 0:.2f}",
-                        f"R$ {custo_efetivo_total_geral/peso_desossado_total if peso_desossado_total > 0 else 0:.2f}", f"R$ {total_vendas_total/peso_desossado_total if peso_desossado_total > 0 else 0:.2f}"
+                        f"{st_margem_p_total*100:.2f}%", f"{markup_total*100:.2f}%", f"R$ {p_medio_compra_total:.2f}",
+                        f"R$ {p_medio_compra_com_total:.2f}", f"R$ {p_medio_venda_total:.2f}"
                     ]
                 }
                 st.table(pd.DataFrame(indicadores_data).set_index("INDICADORES"))
@@ -1039,37 +1025,44 @@ else:
                 st.markdown(
                     """
                     <div style="background-color: #EAB308; padding: 10px; border-radius: 4px; margin-top: 20px; margin-bottom: 10px; color: #000000; font-weight: bold;">
-                        <strong>🟨 Detalhes de Rendimento e Margens Variáveis por Corte (Fiel à Planilha)</strong>
+                        <strong>🟨 Detalhes de Rendimento e Margens (Fiel à Cor da Planilha - Contraste Otimizado)</strong>
                     </div>
                     """, unsafe_allow_html=True
                 )
                 
+                df_cortes_calc = df_cortes.copy()
+                df_cortes_calc["Valor Total Venda"] = df_cortes_calc["peso"] * df_cortes_calc["preco_venda"]
+                df_cortes_calc["Preço de Custo / KG"] = df_cortes_calc["preco_venda"] * coeficiente
+                df_cortes_calc["Preço de Custo Total"] = df_cortes_calc["Valor Total Venda"] * coeficiente
+                df_cortes_calc["Lucro Bruto"] = df_cortes_calc["Valor Total Venda"] - df_cortes_calc["Preço de Custo Total"]
+                df_cortes_calc["Rendimento %"] = (df_cortes_calc["peso"] / peso_final) * 100 if peso_final > 0 else 0
+                
                 df_formatado = df_cortes_calc.rename(columns={
                     "nome_corte": "Corte", "qualidade": "Qualidade", "peso": "Peso (KG)",
                     "preco_venda": "Preço Venda (R$/KG)", "Valor Total Venda": "Faturamento Total",
-                    "Preço de Custo / KG": "Custo Base/KG", "Custo Efetivo por KG": "Custo Efet./KG",
-                    "Custo Efetivo Total": "Custo Total Efetivo", "Lucro Efetivo por Lote": "Margem Bruta (R$)",
-                    "Rendimento %": "Rendimento %"
+                    "Preço de Custo / KG": "Custo por KG", "Preço de Custo Total": "Custo Total",
+                    "Lucro Bruto": "Margem Bruta (R$)", "Rendimento %": "Rendimento %"
                 })
                 
-                cols_exibicao = ["Corte", "Qualidade", "Peso (KG)", "Preço Venda (R$/KG)", "Faturamento Total", "Custo Base/KG", "Custo Efet./KG", "Custo Total Efetivo", "Margem Bruta (R$)", "Rendimento %"]
+                cols_exibicao = ["Corte", "Qualidade", "Peso (KG)", "Preço Venda (R$/KG)", "Faturamento Total", "Custo por KG", "Custo Total", "Margem Bruta (R$)", "Rendimento %"]
                 df_final = df_formatado[cols_exibicao].copy()
                 
                 total_peso = df_final["Peso (KG)"].sum()
                 total_faturamento = df_final["Faturamento Total"].sum()
-                total_custo_total = df_final["Custo Total Efetivo"].sum()
+                total_custo_total = df_final["Custo Total"].sum()
                 total_margem_bruta = df_final["Margem Bruta (R$)"].sum()
                 total_rendimento = df_final["Rendimento %"].sum()
                 
                 linha_total = pd.DataFrame([{
                     "Corte": "TOTAL SOMA", "Qualidade": "", "Peso (KG)": total_peso,
                     "Preço Venda (R$/KG)": None, "Faturamento Total": total_faturamento,
-                    "Custo Base/KG": None, "Custo Efet./KG": None, "Custo Total Efetivo": total_custo_total,
+                    "Custo por KG": None, "Custo Total": total_custo_total,
                     "Margem Bruta (R$)": total_margem_bruta, "Rendimento %": total_rendimento
                 }])
                 
                 df_com_total = pd.concat([df_final, linha_total], ignore_index=True)
                 
+                # --- Estilização para Margem <= 0 (Alto Contraste) ---
                 def estilizar_margem_bruta(val):
                     try:
                         if isinstance(val, (int, float)) and val <= 0:
@@ -1083,23 +1076,23 @@ else:
                         "Peso (KG)": "{:.3f}",
                         "Preço Venda (R$/KG)": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
                         "Faturamento Total": "R$ {:.2f}",
-                        "Custo Base/KG": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
-                        "Custo Efet./KG": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
-                        "Custo Total Efetivo": "R$ {:.2f}",
+                        "Custo por KG": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
+                        "Custo Total": "R$ {:.2f}",
                         "Margem Bruta (R$)": "R$ {:.2f}",
                         "Rendimento %": "{:.2f}%"
                     }).map(estilizar_margem_bruta, subset=["Margem Bruta (R$)"])
                 )
                 
-                # ==================== PDF COM CUSTOS VARIÁVEIS ====================
+                # ==================== PDF COM CONTRATE REFORÇADO ====================
                 st.markdown("### 🖨️ Exportação de Relatórios")
                 
-                def gerar_pdf_lote_avancado():
+                def gerar_pdf_lote():
                     pdf = FPDF()
                     pdf.add_page()
-                    pdf.set_font("Arial", size=11)
+                    pdf.set_font("Arial", size=12)
                     
-                    pdf.set_fill_color(30, 58, 138)
+                    # Cabeçalho Principal do PDF
+                    pdf.set_fill_color(30, 58, 138) # Azul Forte
                     pdf.rect(10, 10, 190, 15, "F")
                     pdf.set_text_color(255, 255, 255)
                     pdf.set_font("Arial", style="B", size=12)
@@ -1109,35 +1102,35 @@ else:
                     
                     pdf.set_text_color(15, 23, 42)
                     pdf.set_font("Arial", size=9)
+                    endereco_txt = "Rua Paraiso, n. 514 - Pompeu/MG".encode("latin1", "replace").decode("latin1")
                     pdf.set_xy(10, 27)
-                    pdf.cell(190, 6, "Rua Paraiso, n. 514 - Pompeu/MG", ln=1, align="C")
+                    pdf.cell(190, 6, endereco_txt, ln=1, align="C")
                     
                     pdf.set_draw_color(30, 58, 138)
                     pdf.set_line_width(0.8)
-                    pdf.line(10, 34, 200, 34)
+                    pdf.line(10, 35, 200, 35)
                     
-                    pdf.set_xy(10, 37)
-                    pdf.set_font("Arial", style="B", size=10)
-                    pdf.cell(190, 6, f"LOTE #{id_selecionado} - {tipo_animal_atual} | Data: {data_br}", ln=1)
-                    
-                    pdf.set_font("Arial", size=8)
-                    pdf.cell(190, 5, f"Taxas de Despesas Aplicadas -> Cartao: {tx_cartao}% | Imposto: {tx_imposto}% | Embalagem: {tx_embalagem}% | Comissao: {tx_comissao}%", ln=1)
+                    pdf.set_xy(10, 40)
+                    pdf.set_font("Arial", style="B", size=11)
+                    pdf.set_text_color(15, 23, 42)
+                    pdf.cell(190, 8, f"LOTE #{id_selecionado} - {tipo_animal_atual} | Data: {data_br}", ln=1)
                     pdf.ln(2)
                     
+                    # Apuração Geral
                     pdf.set_fill_color(226, 232, 240)
-                    pdf.set_font("Arial", style="B", size=9)
-                    pdf.cell(190, 6, "APURACAO GERAL DO LOTE", ln=1, fill=True, align="C")
+                    pdf.set_font("Arial", style="B", size=10)
+                    pdf.cell(190, 7, "APURACAO GERAL DO LOTE", ln=1, fill=True, align="C")
                     pdf.set_font("Arial", size=8)
-                    pdf.cell(65, 5, "Item de Apuracao", border=1, fill=True)
-                    pdf.cell(40, 5, "Peso (KG)", border=1, align="C", fill=True)
-                    pdf.cell(45, 5, "R$", border=1, align="C", fill=True)
-                    pdf.cell(40, 5, "Porcentagem", border=1, align="C", fill=True)
+                    pdf.cell(65, 6, "Item de Apuracao", border=1, fill=True)
+                    pdf.cell(40, 6, "Peso (KG)", border=1, align="C", fill=True)
+                    pdf.cell(45, 6, "R$", border=1, align="C", fill=True)
+                    pdf.cell(40, 6, "Porcentagem", border=1, align="C", fill=True)
                     pdf.ln()
                     
                     itens_apuracao = ["PESO BRUTO/KG", "OSSOS/MUXIBA", "QUEBRA NAO IDENTIF.", "ESCORRIMENTO", "Peso Final", "TOTAL DE QUEBRA"]
                     pesos_txt = [formatar_peso_visual(p_bruto), formatar_peso_visual(ossos_val), formatar_peso_visual(quebra_val), formatar_peso_visual(exsudato_val), formatar_peso_visual(peso_final), formatar_peso_visual(total_quebra)]
                     valores_txt = [f"R$ {valor_total_compra:.2f}", "-", "-", "-", f"R$ {valor_total_compra:.2f}", "-"]
-                    porcentagens_txt = ["100.00%", f"{porc_ossos:.2f}%", f"{porc_quebra:.2f}%", f"{porc_exsudato:.2f}%", f"{porc_final:.2f}%", f"{total_quebra / p_bruto * 100:.2f}%"]
+                    porcentagens_txt = ["100.00%", f"{porc_ossos:.2f}%", f"{porc_quebra:.2f}%", f"{porc_exsudato:.2f}%", f"{porc_final:.2f}%", f"{porc_total_quebra:.2f}%"]
                     
                     for idx_item in range(len(itens_apuracao)):
                         pdf.cell(65, 5, itens_apuracao[idx_item], border=1)
@@ -1146,76 +1139,106 @@ else:
                         pdf.cell(40, 5, porcentagens_txt[idx_item], border=1, align="C")
                         pdf.ln()
                     
-                    pdf.ln(3)
+                    pdf.ln(4)
                     
-                    pdf.set_fill_color(34, 197, 94)
-                    pdf.set_font("Arial", style="B", size=9)
+                    # Indicadores
+                    pdf.set_fill_color(34, 197, 94) # Verde-folha forte
+                    pdf.set_font("Arial", style="B", size=10)
                     pdf.set_text_color(255, 255, 255)
-                    pdf.cell(190, 6, "QUADRO DE INDICADORES", ln=1, fill=True, align="C")
+                    pdf.cell(190, 7, "QUADRO DE INDICADORES", ln=1, fill=True, align="C")
                     pdf.set_text_color(15, 23, 42)
                     pdf.set_font("Arial", size=8)
-                    pdf.cell(70, 5, "INDICADOR", border=1, fill=True)
-                    pdf.cell(40, 5, "OURO", border=1, align="C", fill=True)
-                    pdf.cell(40, 5, "PRATA", border=1, align="C", fill=True)
-                    pdf.cell(40, 5, "TOTAL", border=1, align="C", fill=True)
+                    pdf.cell(70, 6, "INDICADOR", border=1, fill=True)
+                    pdf.cell(40, 6, "OURO", border=1, align="C", fill=True)
+                    pdf.cell(40, 6, "PRATA", border=1, align="C", fill=True)
+                    pdf.cell(40, 6, "TOTAL", border=1, align="C", fill=True)
                     pdf.ln()
                     
                     indicadores_nomes = [
-                        "Compra S/ Custos Var.", "Faturamento Venda", "Peso Desossado (KG)",
+                        "Compra Sem Custos Var.", "Faturamento Venda", "Peso Desossado (KG)",
                         "COEFICIENTE", "Custo Efetivo Total", "Margem de Contrib. R$",
-                        "Margem de Contrib. %", "Markup %"
+                        "Margem de Contrib. %", "Markup %", "P. Med. Compra S/ Var.",
+                        "P. Med. Compra C/ Var.", "P. Med. Venda/KG"
                     ]
-                    v_ouro = [f"R$ {compra_ouro:.2f}", f"R$ {total_vendas_ouro:.2f}", f"{peso_desossado_ouro:.3f}", f"{coeficiente:.6f}", f"R$ {custo_efetivo_ouro:.2f}", f"R$ {margem_r_ouro:.2f}", f"{margem_p_ouro*100:.2f}%", f"{markup_ouro*100:.2f}%"]
-                    v_prata = [f"R$ {compra_prata:.2f}", f"R$ {total_vendas_prata:.2f}", f"{peso_desossado_prata:.3f}", f"{coeficiente:.6f}", f"R$ {custo_efetivo_prata:.2f}", f"R$ {margem_r_prata:.2f}", f"{margem_p_prata*100:.2f}%", f"{markup_prata*100:.2f}%"]
-                    v_tot = [f"R$ {valor_total_compra:.2f}", f"R$ {total_vendas_total:.2f}", f"{peso_desossado_total:.3f}", f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_geral:.2f}", f"R$ {margem_r_total:.2f}", f"{st_margem_p_total*100:.2f}%", f"{markup_total*100:.2f}%"]
+                    valores_ouro = [f"R$ {compra_ouro:.2f}", f"R$ {total_vendas_ouro:.2f}", f"{peso_desossado_ouro:.3f}", f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_ouro:.2f}", f"R$ {margem_r_ouro:.2f}", f"{margem_p_ouro*100:.2f}%", f"{markup_ouro*100:.2f}%", f"R$ {p_medio_compra_ouro:.2f}", f"R$ {p_medio_compra_com_ouro:.2f}", f"R$ {p_medio_venda_ouro:.2f}"]
+                    valores_prata = [f"R$ {compra_prata:.2f}", f"R$ {total_vendas_prata:.2f}", f"{peso_desossado_prata:.3f}", f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_prata:.2f}", f"R$ {margem_r_prata:.2f}", f"{margem_p_prata*100:.2f}%", f"{markup_prata*100:.2f}%", f"R$ {p_medio_compra_prata:.2f}", f"R$ {p_medio_compra_com_prata:.2f}", f"R$ {p_medio_venda_prata:.2f}"]
+                    valores_totais = [f"R$ {valor_total_compra:.2f}", f"R$ {total_vendas_total:.2f}", f"{peso_desossado_total:.3f}", f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_geral:.2f}", f"R$ {margem_r_total:.2f}", f"{st_margem_p_total*100:.2f}%", f"{markup_total*100:.2f}%", f"R$ {p_medio_compra_total:.2f}", f"R$ {p_medio_compra_com_total:.2f}", f"R$ {p_medio_venda_total:.2f}"]
                     
                     for idx_ind, nome in enumerate(indicadores_nomes):
-                        pdf.cell(70, 4.5, nome, border=1)
-                        pdf.cell(40, 4.5, v_ouro[idx_ind], border=1, align="C")
-                        pdf.cell(40, 4.5, v_prata[idx_ind], border=1, align="C")
-                        pdf.cell(40, 4.5, v_tot[idx_ind], border=1, align="C")
+                        pdf.cell(70, 5, nome, border=1)
+                        pdf.cell(40, 5, valores_ouro[idx_ind], border=1, align="C")
+                        pdf.cell(40, 5, valores_prata[idx_ind], border=1, align="C")
+                        pdf.cell(40, 5, valores_totais[idx_ind], border=1, align="C")
                         pdf.ln()
                     
-                    pdf.ln(3)
+                    pdf.ln(4)
                     
-                    pdf.set_fill_color(234, 179, 8)
+                    # Detalhamento de Cortes
+                    pdf.set_fill_color(234, 179, 8) # Amarelo escuro
                     pdf.set_font("Arial", style="B", size=9)
-                    pdf.cell(190, 6, "DETALHAMENTO DE CORTES E MARGENS", ln=1, fill=True, align="C")
+                    pdf.set_text_color(0, 0, 0)
+                    pdf.cell(190, 8, "DETALHAMENTO DE CORTES E MARGENS", ln=1, fill=True, align="C")
                     pdf.set_font("Arial", size=7)
                     
-                    pdf.cell(45, 5, "Corte", border=1, fill=True)
-                    pdf.cell(15, 5, "Qualid.", border=1, align="C", fill=True)
-                    pdf.cell(18, 5, "Peso (KG)", border=1, align="C", fill=True)
-                    pdf.cell(24, 5, "P. Venda (KG)", border=1, align="C", fill=True)
-                    pdf.cell(24, 5, "Custo Base/KG", border=1, align="C", fill=True)
-                    pdf.cell(24, 5, "Custo Efet./KG", border=1, align="C", fill=True)
-                    pdf.cell(40, 5, "Margem Bruta (R$)", border=1, align="C", fill=True)
+                    pdf.cell(35, 6, "Corte", border=1, fill=True)
+                    pdf.cell(15, 6, "Qualidade", border=1, align="C", fill=True)
+                    pdf.cell(15, 6, "Peso (KG)", border=1, align="C", fill=True)
+                    pdf.cell(20, 6, "P. Venda (KG)", border=1, align="C", fill=True)
+                    pdf.cell(20, 6, "Fat. Total", border=1, align="C", fill=True)
+                    pdf.cell(18, 6, "Custo/KG", border=1, align="C", fill=True)
+                    pdf.cell(22, 6, "Custo Total", border=1, align="C", fill=True)
+                    pdf.cell(25, 6, "Margem Bruta", border=1, align="C", fill=True)
+                    pdf.cell(20, 6, "Rend. %", border=1, align="C", fill=True)
                     pdf.ln()
                     
-                    for _, r_c in df_cortes_calc.iterrows():
-                        pdf.cell(45, 4.5, str(r_c["nome_corte"]), border=1)
-                        pdf.cell(15, 4.5, str(r_c["qualidade"]), border=1, align="C")
-                        pdf.cell(18, 4.5, f"{r_c['peso']:.3f}", border=1, align="C")
-                        pdf.cell(24, 4.5, f"R$ {r_c['preco_venda']:.2f}", border=1, align="C")
-                        pdf.cell(24, 4.5, f"R$ {r_c['preco_venda'] * coeficiente:.2f}", border=1, align="C")
-                        pdf.cell(24, 4.5, f"R$ {r_c['Custo Efetivo por KG']:.2f}", border=1, align="C")
+                    for _, r_corte in df_final.iterrows():
+                        marg_val = r_corte["Margem Bruta (R$)"]
+                        pdf.cell(35, 5, str(r_corte["Corte"]), border=1)
+                        pdf.cell(15, 5, str(r_corte["Qualidade"]), border=1, align="C")
+                        pdf.cell(15, 5, f"{r_corte['Peso (KG)']:.3f}", border=1, align="C")
+                        pdf.cell(20, 5, f"R$ {r_corte['Preço Venda (R$/KG)']:.2f}", border=1, align="C")
+                        pdf.cell(20, 5, f"R$ {r_corte['Faturamento Total']:.2f}", border=1, align="C")
+                        pdf.cell(18, 5, f"R$ {r_corte['Custo por KG']:.2f}", border=1, align="C")
+                        pdf.cell(22, 5, f"R$ {r_corte['Custo Total']:.2f}", border=1, align="C")
                         
-                        m_v = r_c["Lucro Efetivo por Lote"]
-                        if m_v <= 0:
-                            pdf.set_fill_color(239, 68, 68)
-                            pdf.set_text_color(255, 255, 255)
-                            pdf.cell(40, 4.5, f"R$ {m_v:.2f}", border=1, align="C", fill=True)
-                            pdf.set_text_color(15, 23, 42)
+                        # DESTAQUE DE MARGEM NEGATIVA NO PDF
+                        if marg_val <= 0:
+                            pdf.set_fill_color(239, 68, 68) 
+                            pdf.set_text_color(255, 255, 255) 
+                            pdf.cell(25, 5, f"R$ {marg_val:.2f}", border=1, align="C", fill=True)
+                            pdf.set_text_color(15, 23, 42) 
                         else:
-                            pdf.cell(40, 4.5, f"R$ {m_v:.2f}", border=1, align="C")
+                            pdf.cell(25, 5, f"R$ {marg_val:.2f}", border=1, align="C")
+                            
+                        pdf.cell(20, 5, f"{r_corte['Rendimento %']:.2f}%", border=1, align="C")
                         pdf.ln()
+                    
+                    # Linha de Totais no PDF
+                    pdf.set_font("Arial", style="B", size=7)
+                    pdf.cell(35, 6, "TOTAL SOMA", border=1, fill=True)
+                    pdf.cell(15, 6, "", border=1, fill=True)
+                    pdf.cell(15, 6, f"{total_peso:.3f}", border=1, align="C", fill=True)
+                    pdf.cell(20, 6, "-", border=1, align="C", fill=True)
+                    pdf.cell(20, 6, f"R$ {total_faturamento:.2f}", border=1, align="C", fill=True)
+                    pdf.cell(18, 6, "-", border=1, align="C", fill=True)
+                    pdf.cell(22, 6, f"R$ {total_custo_total:.2f}", border=1, align="C", fill=True)
+                    
+                    if total_margem_bruta <= 0:
+                        pdf.set_fill_color(239, 68, 68)
+                        pdf.set_text_color(255, 255, 255)
+                        pdf.cell(25, 6, f"R$ {total_margem_bruta:.2f}", border=1, align="C", fill=True)
+                        pdf.set_text_color(15, 23, 42)
+                    else:
+                        pdf.cell(25, 6, f"R$ {total_margem_bruta:.2f}", border=1, align="C", fill=True)
                         
+                    pdf.cell(20, 6, f"{total_rendimento:.2f}%", border=1, align="C", fill=True)
+                    
                     return pdf.output(dest="S").encode("latin1")
                 
-                pdf_bytes_avancado = gerar_pdf_lote_avancado()
+                pdf_bytes = gerar_pdf_lote()
                 st.download_button(
-                    label="📄 Descarregar Relatório em PDF Atualizado",
-                    data=pdf_bytes_avancado,
+                    label="📄 Descarregar Relatório em PDF",
+                    data=pdf_bytes,
                     file_name=f"relatorio_lote_{id_selecionado}.pdf",
                     mime="application/pdf"
                 )
