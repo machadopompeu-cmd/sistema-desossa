@@ -723,7 +723,7 @@ else:
                     quebra_nao_identificada = st.number_input("Quebra Não Identificada (KG)", min_value=0.0, step=0.001, format="%.3f", key="input_quebra")
                     exsudato_escorrimento = st.number_input("Exsudato / Escorrimento (KG)", min_value=0.0, step=0.001, format="%.3f", key="input_exsudato")
 
-                # --- 📥 MELHORIA INTEGRADA: LEITURA INTELIGENTE DE CORTES (CSV) ---
+                # --- 📥 IMPLEMENTAÇÃO INTEGRAL: LEITURA EM CASCATA ANTI-TRAVAMENTO (CSV) ---
                 st.markdown("---")
                 st.subheader("📥 Pré-carregamento Rápido de Cortes do Lote (CSV)")
                 st.write("Faça o upload do arquivo CSV contendo as colunas: `nome_corte`, `peso` e `preco_venda`.")
@@ -731,50 +731,44 @@ else:
                 
                 if uploaded_lote_file is not None:
                     try:
-                        # Teste dinâmico de encoding e separador (vírgula ou ponto e vírgula)
-                        conteudo_bytes = uploaded_lote_file.read()
-                        uploaded_lote_file.seek(0)
-                        
-                        # Tenta decodificar o conteúdo para identificar o separador real
-                        texto_amostra = ""
-                        for enc in ["utf-8", "latin-1"]:
-                            try:
-                                texto_amostra = conteudo_bytes.decode(enc)
+                        df_lote_csv = None
+                        # Teste defensivo em cascata de codificações e separadores nativos do Pandas
+                        for separador in [";", ","]:
+                            for encodificacao in ["utf-8", "latin-1"]:
+                                try:
+                                    uploaded_lote_file.seek(0)
+                                    df_teste = pd.read_csv(uploaded_lote_file, sep=separador, encoding=encodificacao)
+                                    # Normaliza e limpa as colunas para checar conformidade
+                                    df_teste.columns = [str(c).strip().lower() for c in df_teste.columns]
+                                    if "nome_corte" in df_teste.columns:
+                                        df_lote_csv = df_teste
+                                        break
+                                except:
+                                    continue
+                            if df_lote_csv is not None:
                                 break
-                            except:
-                                continue
                         
-                        # Define o delimitador com base na ocorrência mais frequente na primeira linha
-                        primeira_linha = texto_amostra.split('\n')[0] if texto_amostra else ""
-                        separador_real = ";" if primeira_linha.count(";") > primeira_linha.count(",") else ","
-                        
-                        # Efetua a leitura definitiva do dataframe
-                        uploaded_lote_file.seek(0)
-                        try:
-                            df_lote_csv = pd.read_csv(uploaded_lote_file, sep=separador_real, encoding="utf-8")
-                        except UnicodeDecodeError:
-                            uploaded_lote_file.seek(0)
-                            df_lote_csv = pd.read_csv(uploaded_lote_file, sep=separador_real, encoding="latin-1")
-                        
-                        # Padroniza os cabeçalhos (remove espaços vazios e joga tudo para minúsculo)
-                        df_lote_csv.columns = [str(col).strip().lower() for col in df_lote_csv.columns]
-                        
-                        if not all(x in df_lote_csv.columns for x in ["nome_corte", "peso", "preco_venda"]):
-                            st.error("❌ Erro nos cabeçalhos. Verifique se a planilha possui exatamente as colunas: 'nome_corte', 'peso' e 'preco_venda'.")
+                        if df_lote_csv is None:
+                            st.error("❌ Erro ao analisar a planilha. Certifique-se de que o arquivo é um CSV válido com a coluna 'nome_corte'.")
                         else:
+                            # Garante que todas as colunas necessárias existam no DataFrame mapeado
+                            for col_obrigatória in ["peso", "preco_venda"]:
+                                if col_obrigatória not in df_lote_csv.columns:
+                                    df_lote_csv[col_obrigatória] = 0.0
+                                    
                             if st.button("🔄 Aplicar Cortes da Planilha ao Lote Provisório"):
                                 st.session_state.cortes_temp = []
                                 for _, r_lote in df_lote_csv.iterrows():
                                     if pd.notnull(r_lote["nome_corte"]) and str(r_lote["nome_corte"]).strip() != "":
-                                        # Suporte flexível para números em padrão BR (substitui vírgula por ponto se necessário)
-                                        p_bruto_v = str(r_lote["peso"]).replace(",", ".") if isinstance(r_lote["peso"], str) else r_lote["peso"]
-                                        p_venda_v = str(r_lote["preco_venda"]).replace(",", ".") if isinstance(r_lote["preco_venda"], str) else r_lote["preco_venda"]
+                                        # Sanatização completa contra números salvos como string usando vírgula (Padrão BR)
+                                        peso_val = str(r_lote["peso"]).replace(",", ".") if isinstance(r_lote["peso"], str) else r_lote["peso"]
+                                        preco_val = str(r_lote["preco_venda"]).replace(",", ".") if isinstance(r_lote["preco_venda"], str) else r_lote["preco_venda"]
                                         
                                         st.session_state.cortes_temp.append({
                                             "nome_corte": str(r_lote["nome_corte"]).strip().upper(),
                                             "qualidade": "OURO",
-                                            "peso": float(p_bruto_v) if pd.notnull(p_bruto_v) else 0.0,
-                                            "preco_venda": float(p_venda_v) if pd.notnull(p_venda_v) else 0.0
+                                            "peso": float(peso_val) if pd.notnull(peso_val) else 0.0,
+                                            "preco_venda": float(preco_val) if pd.notnull(preco_val) else 0.0
                                         })
                                 st.success(f"🎉 Encontrados e carregados {len(st.session_state.cortes_temp)} cortes com sucesso!")
                                 st.rerun()
@@ -931,7 +925,7 @@ else:
                         """, (str(ed_data), ed_tipo, ed_p_bruto, ed_preco_animal, ed_ossos, ed_quebra, ed_exsudato, id_selecionado, emp_id_ativo))
                         conn.commit()
                         conn.close()
-                        st.success("✅ Carcaça atualizada!")
+                        st.success("✅ Carcaça updated!")
                         st.rerun()
 
                 # --- GERENCIAMENTO DE CORTES ---
@@ -1125,7 +1119,7 @@ else:
                         "Custo Total Efetivo": "R$ {:.2f}",
                         "Margem Bruta (R$)": "R$ {:.2f}",
                         "Rendimento %": "{:.2f}%"
-                    }).map(estilizar_margem_bruta, subset=["Margem Bruta (R$)"])
+                    }).map(stilizar_margem_bruta, subset=["Margem Bruta (R$)"])
                 )
                 
                 # ==================== PDF COM CUSTOS VARIÁVEIS ====================
