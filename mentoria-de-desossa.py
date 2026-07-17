@@ -723,32 +723,58 @@ else:
                     quebra_nao_identificada = st.number_input("Quebra Não Identificada (KG)", min_value=0.0, step=0.001, format="%.3f", key="input_quebra")
                     exsudato_escorrimento = st.number_input("Exsudato / Escorrimento (KG)", min_value=0.0, step=0.001, format="%.3f", key="input_exsudato")
 
-                # --- NEW ROTINE: PLANILHA DE CORTES VIA CSV NO LOTE ---
+                # --- 📥 MELHORIA INTEGRADA: LEITURA INTELIGENTE DE CORTES (CSV) ---
                 st.markdown("---")
                 st.subheader("📥 Pré-carregamento Rápido de Cortes do Lote (CSV)")
-                st.write("Se preferir, faça o upload de um arquivo CSV contendo obrigatoriamente as colunas: `nome_corte`, `peso` e `preco_venda`.")
+                st.write("Faça o upload do arquivo CSV contendo as colunas: `nome_corte`, `peso` e `preco_venda`.")
                 uploaded_lote_file = st.file_uploader("Selecionar Arquivo CSV de Cortes", type=["csv"], key="lote_csv_up")
                 
                 if uploaded_lote_file is not None:
                     try:
+                        # Teste dinâmico de encoding e separador (vírgula ou ponto e vírgula)
+                        conteudo_bytes = uploaded_lote_file.read()
+                        uploaded_lote_file.seek(0)
+                        
+                        # Tenta decodificar o conteúdo para identificar o separador real
+                        texto_amostra = ""
+                        for enc in ["utf-8", "latin-1"]:
+                            try:
+                                texto_amostra = conteudo_bytes.decode(enc)
+                                break
+                            except:
+                                continue
+                        
+                        # Define o delimitador com base na ocorrência mais frequente na primeira linha
+                        primeira_linha = texto_amostra.split('\n')[0] if texto_amostra else ""
+                        separador_real = ";" if primeira_linha.count(";") > primeira_linha.count(",") else ","
+                        
+                        # Efetua a leitura definitiva do dataframe
+                        uploaded_lote_file.seek(0)
                         try:
-                            df_lote_csv = pd.read_csv(uploaded_lote_file, encoding="utf-8")
+                            df_lote_csv = pd.read_csv(uploaded_lote_file, sep=separador_real, encoding="utf-8")
                         except UnicodeDecodeError:
                             uploaded_lote_file.seek(0)
-                            df_lote_csv = pd.read_csv(uploaded_lote_file, encoding="latin-1")
+                            df_lote_csv = pd.read_csv(uploaded_lote_file, sep=separador_real, encoding="latin-1")
+                        
+                        # Padroniza os cabeçalhos (remove espaços vazios e joga tudo para minúsculo)
+                        df_lote_csv.columns = [str(col).strip().lower() for col in df_lote_csv.columns]
                         
                         if not all(x in df_lote_csv.columns for x in ["nome_corte", "peso", "preco_venda"]):
-                            st.error("❌ O arquivo CSV deve conter as colunas: 'nome_corte', 'peso' e 'preco_venda'.")
+                            st.error("❌ Erro nos cabeçalhos. Verifique se a planilha possui exatamente as colunas: 'nome_corte', 'peso' e 'preco_venda'.")
                         else:
                             if st.button("🔄 Aplicar Cortes da Planilha ao Lote Provisório"):
                                 st.session_state.cortes_temp = []
                                 for _, r_lote in df_lote_csv.iterrows():
                                     if pd.notnull(r_lote["nome_corte"]) and str(r_lote["nome_corte"]).strip() != "":
+                                        # Suporte flexível para números em padrão BR (substitui vírgula por ponto se necessário)
+                                        p_bruto_v = str(r_lote["peso"]).replace(",", ".") if isinstance(r_lote["peso"], str) else r_lote["peso"]
+                                        p_venda_v = str(r_lote["preco_venda"]).replace(",", ".") if isinstance(r_lote["preco_venda"], str) else r_lote["preco_venda"]
+                                        
                                         st.session_state.cortes_temp.append({
                                             "nome_corte": str(r_lote["nome_corte"]).strip().upper(),
                                             "qualidade": "OURO",
-                                            "peso": float(r_lote["peso"]) if pd.notnull(r_lote["peso"]) else 0.0,
-                                            "preco_venda": float(r_lote["preco_venda"]) if pd.notnull(r_lote["preco_venda"]) else 0.0
+                                            "peso": float(p_bruto_v) if pd.notnull(p_bruto_v) else 0.0,
+                                            "preco_venda": float(p_venda_v) if pd.notnull(p_venda_v) else 0.0
                                         })
                                 st.success(f"🎉 Encontrados e carregados {len(st.session_state.cortes_temp)} cortes com sucesso!")
                                 st.rerun()
@@ -871,7 +897,6 @@ else:
                 df_cortes = pd.read_sql_query(f"SELECT * FROM cortes WHERE acao_id = {id_selecionado}", conn)
                 conn.close()
                 
-                # --- NEW ROTINE: PERCENTUAIS DE ENTRADA DO USUÁRIO ---
                 st.markdown("""
                     <div style="background-color: #F1F5F9; padding: 12px; border-radius: 6px; border: 2px solid #0F172A; margin-top: 10px; margin-bottom: 15px;">
                         <span style="color: #0F172A; font-weight: bold; font-size: 16px;">⚙️ AJUSTE DE TAXAS E CUSTOS VARIÁVEIS (%)</span>
@@ -937,7 +962,7 @@ else:
                             st.rerun()
                         st.markdown("---")
 
-                # --- CÁLCULOS TÉCNICOS INTEGRADOS COM AS NOVAS TAXAS ---
+                # --- CÁLCULOS ---
                 p_bruto = acao_row["peso_bruto"]
                 p_comp_kg = acao_row["preco_animal_kg"]
                 valor_total_compra = p_bruto * p_comp_kg
@@ -957,7 +982,6 @@ else:
                 porc_quebra = (quebra_val / p_bruto * 100) if p_bruto > 0 else 0.0
                 porc_exsudato = (exsudato_val / p_bruto * 100) if p_bruto > 0 else 0.0
                 porc_final = (peso_final / p_bruto * 100) if p_bruto > 0 else 0.0
-                porc_total_quebra = (total_quebra / p_bruto * 100) if p_bruto > 0 else 0.0
 
                 # Apuração Geral
                 st.subheader("📊 Apuração Geral do Lote")
@@ -977,7 +1001,7 @@ else:
                 coeficiente = valor_total_compra / total_vendas_total if total_vendas_total > 0 else 0
                 df_cortes_calc["Preço de Custo / KG"] = df_cortes_calc["preco_venda"] * coeficiente
                 
-                # Aplicação cirúrgica das taxas variáveis sobre o Preço de Venda
+                # Aplicação das taxas variáveis sobre o Preço de Venda
                 soma_taxas_porc = (tx_cartao + tx_imposto + tx_embalagem + tx_comissao) / 100
                 df_cortes_calc["Despesas Variáveis por KG"] = df_cortes_calc["preco_venda"] * soma_taxas_porc
                 df_cortes_calc["Custo Efetivo por KG"] = df_cortes_calc["Preço de Custo / KG"] + df_cortes_calc["Despesas Variáveis por KG"]
@@ -1077,13 +1101,12 @@ else:
                 linha_total = pd.DataFrame([{
                     "Corte": "TOTAL SOMA", "Qualidade": "", "Peso (KG)": total_peso,
                     "Preço Venda (R$/KG)": None, "Faturamento Total": total_faturamento,
-                    "Custo por KG": None, "Custo Efet./KG": None, "Custo Total Efetivo": total_custo_total,
+                    "Custo Base/KG": None, "Custo Efet./KG": None, "Custo Total Efetivo": total_custo_total,
                     "Margem Bruta (R$)": total_margem_bruta, "Rendimento %": total_rendimento
                 }])
                 
                 df_com_total = pd.concat([df_final, linha_total], ignore_index=True)
                 
-                # --- Estilização para Margem <= 0 (Alto Contraste) ---
                 def estilizar_margem_bruta(val):
                     try:
                         if isinstance(val, (int, float)) and val <= 0:
@@ -1113,7 +1136,6 @@ else:
                     pdf.add_page()
                     pdf.set_font("Arial", size=11)
                     
-                    # Cabeçalho Principal do PDF
                     pdf.set_fill_color(30, 58, 138)
                     pdf.rect(10, 10, 190, 15, "F")
                     pdf.set_text_color(255, 255, 255)
@@ -1135,12 +1157,10 @@ else:
                     pdf.set_font("Arial", style="B", size=10)
                     pdf.cell(190, 6, f"LOTE #{id_selecionado} - {tipo_animal_atual} | Data: {data_br}", ln=1)
                     
-                    # Log de despesas injetadas no PDF
                     pdf.set_font("Arial", size=8)
                     pdf.cell(190, 5, f"Taxas de Despesas Aplicadas -> Cartao: {tx_cartao}% | Imposto: {tx_imposto}% | Embalagem: {tx_embalagem}% | Comissao: {tx_comissao}%", ln=1)
                     pdf.ln(2)
                     
-                    # Apuração Geral
                     pdf.set_fill_color(226, 232, 240)
                     pdf.set_font("Arial", style="B", size=9)
                     pdf.cell(190, 6, "APURACAO GERAL DO LOTE", ln=1, fill=True, align="C")
@@ -1165,7 +1185,6 @@ else:
                     
                     pdf.ln(3)
                     
-                    # Indicadores
                     pdf.set_fill_color(34, 197, 94)
                     pdf.set_font("Arial", style="B", size=9)
                     pdf.set_text_color(255, 255, 255)
@@ -1196,7 +1215,6 @@ else:
                     
                     pdf.ln(3)
                     
-                    # Detalhes por Cortes
                     pdf.set_fill_color(234, 179, 8)
                     pdf.set_font("Arial", style="B", size=9)
                     pdf.cell(190, 6, "DETALHAMENTO DE CORTES E MARGENS", ln=1, fill=True, align="C")
