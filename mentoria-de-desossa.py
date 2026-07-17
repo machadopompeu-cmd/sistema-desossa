@@ -205,27 +205,18 @@ def get_tipos_desossa(empresa_id):
     conn.close()
     return tipos
 
-# --- 4. CONTROLE DE ESTADOS DO FORMULÁRIO (CORRIGIDO) ---
+# --- 4. CONTROLE DE ESTADOS DO FORMULÁRIO (CORREÇÃO COMPLETA ANTI-ERRO) ---
 def init_form_states():
     if "input_data" not in st.session_state:
         st.session_state.input_data = datetime.date.today()
-    if "input_corte_nome_manual" not in st.session_state:
-        st.session_state.input_corte_nome_manual = ""
-    if "input_corte_peso" not in st.session_state:
-        st.session_state.input_corte_peso = 0.0
-    if "input_corte_preco" not in st.session_state:
-        st.session_state.input_corte_preco = 0.0
     if "uploader_key" not in st.session_state:
         st.session_state.uploader_key = 0
     if "cortes_temp" not in st.session_state:
         st.session_state.cortes_temp = []
 
 def reset_form_states():
-    # Removido a alteração direta de chaves vinculadas a Widgets numéricos ativos para evitar StreamlitAPIException
+    # Eliminadas totalmente as atribuições diretas de chaves associadas a inputs numéricos activos
     st.session_state.input_data = datetime.date.today()
-    st.session_state.input_corte_nome_manual = ""
-    st.session_state.input_corte_peso = 0.0
-    st.session_state.input_corte_preco = 0.0
     st.session_state.cortes_temp = []
 
 # --- 5. CABEÇALHO PADRONIZADO ---
@@ -703,13 +694,13 @@ else:
                     st.session_state.input_data = data_input
                     
                     tipo_animal = st.selectbox("Tipo de Desossa", tipos_empresa, key="tipo_animal_select")
-                    peso_bruto = st.number_input("Peso Bruto (KG)", min_value=0.0, step=0.001, format="%.3f", key="input_peso_bruto")
-                    preco_animal_kg = st.number_input("Preço do Animal (R$/KG)", min_value=0.0, step=0.01, key="input_preco_animal")
+                    peso_bruto = st.number_input("Peso Bruto (KG)", min_value=0.0, step=0.001, format="%.3f")
+                    preco_animal_kg = st.number_input("Preço do Animal (R$/KG)", min_value=0.0, step=0.01)
                     
                 with col2:
-                    ossos_muxiba = st.number_input("Ossos / Muxiba (KG)", min_value=0.0, step=0.001, format="%.3f", key="input_ossos")
-                    quebra_nao_identificada = st.number_input("Quebra Não Identificada (KG)", min_value=0.0, step=0.001, format="%.3f", key="input_quebra")
-                    exsudato_escorrimento = st.number_input("Exsudato / Escorrimento (KG)", min_value=0.0, step=0.001, format="%.3f", key="input_exsudato")
+                    ossos_muxiba = st.number_input("Ossos / Muxiba (KG)", min_value=0.0, step=0.001, format="%.3f")
+                    quebra_nao_identificada = st.number_input("Quebra Não Identificada (KG)", min_value=0.0, step=0.001, format="%.3f")
+                    exsudato_escorrimento = st.number_input("Exsudato / Escorrimento (KG)", min_value=0.0, step=0.001, format="%.3f")
 
                 # --- 📥 LEITURA EM CASCATA ANTI-TRAVAMENTO (CSV) ---
                 st.markdown("---")
@@ -777,11 +768,11 @@ else:
                     if lista_cortes_disponiveis:
                         nome_corte = col_c1.selectbox("Corte Cadastrado", lista_cortes_disponiveis)
                     else:
-                        nome_corte = col_c1.text_input("Nome do Corte Manual", key="input_corte_nome_manual")
+                        nome_corte = col_c1.text_input("Nome do Corte Manual")
                         
                     qualidade = col_c2.selectbox("Qualidade", ["OURO", "PRATA"])
-                    peso_corte = col_c3.number_input("Peso do Corte (KG)", min_value=0.0, step=0.001, format="%.3f", key="input_corte_peso")
-                    preco_venda = col_c4.number_input("Preço de Venda (R$/KG)", min_value=0.0, step=0.01, key="input_corte_preco")
+                    peso_corte = col_c3.number_input("Peso do Corte (KG)", min_value=0.0, step=0.001, format="%.3f")
+                    preco_venda = col_c4.number_input("Preço de Venda (R$/KG)", min_value=0.0, step=0.01)
                     
                     submitted = st.form_submit_button("➕ Adicionar Corte")
                     if submitted and (nome_corte or (not lista_cortes_disponiveis and nome_corte != "")):
@@ -793,9 +784,6 @@ else:
                             "preco_venda": preco_venda
                         })
                         st.success(f"Adicionado!")
-                        st.session_state.input_corte_nome_manual = ""
-                        st.session_state.input_corte_peso = 0.0
-                        st.session_state.input_corte_preco = 0.0
                         st.rerun()
 
                 if st.session_state.cortes_temp:
@@ -1172,7 +1160,7 @@ else:
                     pdf.cell(40, 5, "TOTAL", border=1, align="C", fill=True)
                     pdf.ln()
                     
-                    indicators_nomes = [
+                    indicadores_nomes = [
                         "Compra S/ Custos Var.", "Faturamento Venda", "Peso Desossado (KG)",
                         "COEFICIENTE", "Custo Efetivo Total", "Margem de Contrib. R$",
                         "Margem de Contrib. %", "Markup %"
@@ -1181,7 +1169,7 @@ else:
                     v_prata = [f"R$ {compra_prata:.2f}", f"R$ {total_vendas_prata:.2f}", f"{peso_desossado_prata:.3f}", f"{coeficiente:.6f}", f"R$ {custo_efetivo_prata:.2f}", f"R$ {margem_r_prata:.2f}", f"{margem_p_prata*100:.2f}%", f"{markup_prata*100:.2f}%"]
                     v_tot = [f"R$ {valor_total_compra:.2f}", f"R$ {total_vendas_total:.2f}", f"{peso_desossado_total:.3f}", f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_geral:.2f}", f"R$ {margem_r_total:.2f}", f"{st_margem_p_total*100:.2f}%", f"{markup_total*100:.2f}%"]
                     
-                    for idx_ind, nome in enumerate(indicators_nomes):
+                    for idx_ind, nome in enumerate(indicadores_nomes):
                         pdf.cell(70, 4.5, nome, border=1)
                         pdf.cell(40, 4.5, v_ouro[idx_ind], border=1, align="C")
                         pdf.cell(40, 4.5, v_prata[idx_ind], border=1, align="C")
