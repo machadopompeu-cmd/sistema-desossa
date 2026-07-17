@@ -205,20 +205,10 @@ def get_tipos_desossa(empresa_id):
     conn.close()
     return tipos
 
-# --- 4. CONTROLE DE ESTADOS DO FORMULÁRIO ---
+# --- 4. CONTROLE DE ESTADOS DO FORMULÁRIO (CORRIGIDO) ---
 def init_form_states():
     if "input_data" not in st.session_state:
         st.session_state.input_data = datetime.date.today()
-    if "input_peso_bruto" not in st.session_state:
-        st.session_state.input_peso_bruto = 0.0
-    if "input_preco_animal" not in st.session_state:
-        st.session_state.input_preco_animal = 0.0
-    if "input_ossos" not in st.session_state:
-        st.session_state.input_ossos = 0.0
-    if "input_quebra" not in st.session_state:
-        st.session_state.input_quebra = 0.0
-    if "input_exsudato" not in st.session_state:
-        st.session_state.input_exsudato = 0.0
     if "input_corte_nome_manual" not in st.session_state:
         st.session_state.input_corte_nome_manual = ""
     if "input_corte_peso" not in st.session_state:
@@ -227,20 +217,18 @@ def init_form_states():
         st.session_state.input_corte_preco = 0.0
     if "uploader_key" not in st.session_state:
         st.session_state.uploader_key = 0
+    if "cortes_temp" not in st.session_state:
+        st.session_state.cortes_temp = []
 
 def reset_form_states():
+    # Removido a alteração direta de chaves vinculadas a Widgets numéricos ativos para evitar StreamlitAPIException
     st.session_state.input_data = datetime.date.today()
-    st.session_state.input_peso_bruto = 0.0
-    st.session_state.input_preco_animal = 0.0
-    st.session_state.input_ossos = 0.0
-    st.session_state.input_quebra = 0.0
-    st.session_state.input_exsudato = 0.0
     st.session_state.input_corte_nome_manual = ""
     st.session_state.input_corte_peso = 0.0
     st.session_state.input_corte_preco = 0.0
     st.session_state.cortes_temp = []
 
-# --- 5. CABEÇALHO PADRONIZADO (ALTERADO) ---
+# --- 5. CABEÇALHO PADRONIZADO ---
 def exibir_cabecalho(nome_empresa_usuaria=None):
     col_logo, col_info = st.columns([1, 4])
     with col_logo:
@@ -723,7 +711,7 @@ else:
                     quebra_nao_identificada = st.number_input("Quebra Não Identificada (KG)", min_value=0.0, step=0.001, format="%.3f", key="input_quebra")
                     exsudato_escorrimento = st.number_input("Exsudato / Escorrimento (KG)", min_value=0.0, step=0.001, format="%.3f", key="input_exsudato")
 
-                # --- 📥 IMPLEMENTAÇÃO INTEGRAL: LEITURA EM CASCATA ANTI-TRAVAMENTO (CSV) ---
+                # --- 📥 LEITURA EM CASCATA ANTI-TRAVAMENTO (CSV) ---
                 st.markdown("---")
                 st.subheader("📥 Pré-carregamento Rápido de Cortes do Lote (CSV)")
                 st.write("Faça o upload do arquivo CSV contendo as colunas: `nome_corte`, `peso` e `preco_venda`.")
@@ -732,13 +720,11 @@ else:
                 if uploaded_lote_file is not None:
                     try:
                         df_lote_csv = None
-                        # Teste defensivo em cascata de codificações e separadores nativos do Pandas
                         for separador in [";", ","]:
                             for encodificacao in ["utf-8", "latin-1"]:
                                 try:
                                     uploaded_lote_file.seek(0)
                                     df_teste = pd.read_csv(uploaded_lote_file, sep=separador, encoding=encodificacao)
-                                    # Normaliza e limpa as colunas para checar conformidade
                                     df_teste.columns = [str(c).strip().lower() for c in df_teste.columns]
                                     if "nome_corte" in df_teste.columns:
                                         df_lote_csv = df_teste
@@ -751,7 +737,6 @@ else:
                         if df_lote_csv is None:
                             st.error("❌ Erro ao analisar a planilha. Certifique-se de que o arquivo é um CSV válido com a coluna 'nome_corte'.")
                         else:
-                            # Garante que todas as colunas necessárias existam no DataFrame mapeado
                             for col_obrigatória in ["peso", "preco_venda"]:
                                 if col_obrigatória not in df_lote_csv.columns:
                                     df_lote_csv[col_obrigatória] = 0.0
@@ -760,7 +745,6 @@ else:
                                 st.session_state.cortes_temp = []
                                 for _, r_lote in df_lote_csv.iterrows():
                                     if pd.notnull(r_lote["nome_corte"]) and str(r_lote["nome_corte"]).strip() != "":
-                                        # Sanatização completa contra números salvos como string usando vírgula (Padrão BR)
                                         peso_val = str(r_lote["peso"]).replace(",", ".") if isinstance(r_lote["peso"], str) else r_lote["peso"]
                                         preco_val = str(r_lote["preco_venda"]).replace(",", ".") if isinstance(r_lote["preco_venda"], str) else r_lote["preco_venda"]
                                         
@@ -787,9 +771,6 @@ else:
                 
                 lista_cortes_disponiveis = df_rec_cortes["nome_corte"].tolist() if not df_rec_cortes.empty else []
                 
-                if "cortes_temp" not in st.session_state:
-                    st.session_state.cortes_temp = []
-                    
                 with st.form("adicionar_corte"):
                     col_c1, col_c2, col_c3, col_c4 = st.columns(4)
                     
@@ -943,7 +924,7 @@ else:
                             cursor.execute("UPDATE cortes SET qualidade = ?, peso = ?, preco_venda = ? WHERE id = ?", (c_qual, c_peso, c_preco, corte_row["id"]))
                             conn.commit()
                             conn.close()
-                            st.success("Corte atualizado!")
+                            st.success("Corte updated!")
                             st.rerun()
                             
                         if col_btn_excluir.button("🗑️ Excluir", key=f"del_c_{corte_row['id']}"):
@@ -1119,7 +1100,7 @@ else:
                         "Custo Total Efetivo": "R$ {:.2f}",
                         "Margem Bruta (R$)": "R$ {:.2f}",
                         "Rendimento %": "{:.2f}%"
-                    }).map(stilizar_margem_bruta, subset=["Margem Bruta (R$)"])
+                    }).map(estilizar_margem_bruta, subset=["Margem Bruta (R$)"])
                 )
                 
                 # ==================== PDF COM CUSTOS VARIÁVEIS ====================
@@ -1191,7 +1172,7 @@ else:
                     pdf.cell(40, 5, "TOTAL", border=1, align="C", fill=True)
                     pdf.ln()
                     
-                    indicadores_nomes = [
+                    indicators_nomes = [
                         "Compra S/ Custos Var.", "Faturamento Venda", "Peso Desossado (KG)",
                         "COEFICIENTE", "Custo Efetivo Total", "Margem de Contrib. R$",
                         "Margem de Contrib. %", "Markup %"
@@ -1200,7 +1181,7 @@ else:
                     v_prata = [f"R$ {compra_prata:.2f}", f"R$ {total_vendas_prata:.2f}", f"{peso_desossado_prata:.3f}", f"{coeficiente:.6f}", f"R$ {custo_efetivo_prata:.2f}", f"R$ {margem_r_prata:.2f}", f"{margem_p_prata*100:.2f}%", f"{markup_prata*100:.2f}%"]
                     v_tot = [f"R$ {valor_total_compra:.2f}", f"R$ {total_vendas_total:.2f}", f"{peso_desossado_total:.3f}", f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_geral:.2f}", f"R$ {margem_r_total:.2f}", f"{st_margem_p_total*100:.2f}%", f"{markup_total*100:.2f}%"]
                     
-                    for idx_ind, nome in enumerate(indicadores_nomes):
+                    for idx_ind, nome in enumerate(indicators_nomes):
                         pdf.cell(70, 4.5, nome, border=1)
                         pdf.cell(40, 4.5, v_ouro[idx_ind], border=1, align="C")
                         pdf.cell(40, 4.5, v_prata[idx_ind], border=1, align="C")
