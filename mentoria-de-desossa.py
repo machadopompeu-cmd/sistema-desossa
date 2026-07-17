@@ -240,8 +240,9 @@ def reset_form_states():
     st.session_state.input_corte_preco = 0.0
     st.session_state.cortes_temp = []
 
-# --- 5. CABEÇALHO ---
-def exibir_cabecalho(nome_empresa="RENATO FRIGOTUDO & ASSOCIADOS"):
+# --- 5. CABEÇALHO PADRONIZADO (ALTERADO) ---
+# Agora exibe obrigatoriamente "RENATO FRIGOTUDO & ASSOCIADOS" no topo e a empresa usuária logo abaixo
+def exibir_cabecalho(nome_empresa_usuaria=None):
     col_logo, col_info = st.columns([1, 4])
     with col_logo:
         if os.path.exists("logo_renato.png"):
@@ -249,13 +250,25 @@ def exibir_cabecalho(nome_empresa="RENATO FRIGOTUDO & ASSOCIADOS"):
         else:
             st.markdown("### 🍖 [LOGO]")
     with col_info:
+        # Título principal fixado em "RENATO FRIGOTUDO & ASSOCIADOS"
+        cabecalho_principal = "RENATO FRIGOTUDO & ASSOCIADOS"
+        
+        # Define o texto da empresa usuária abaixo do cabeçalho
+        if nome_empresa_usuaria:
+            subtitulo_empresa = nome_empresa_usuaria.upper()
+        else:
+            subtitulo_empresa = "PORTAL DE ACESSO"
+
         st.markdown(
             f"""
             <div style="padding-top: 10px;">
                 <h1 style="margin: 0; color: #1E3A8A; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 26px; font-weight: bold; letter-spacing: 1px;">
-                    {nome_empresa.upper()}
+                    {cabecalho_principal}
                 </h1>
-                <p style="margin: 0; color: #0F172A; font-size: 15px; font-weight: bold;">
+                <h3 style="margin: 3px 0 0 0; color: #0F172A; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 18px; font-weight: bold;">
+                    🏢 Empresa Usuária: {subtitulo_empresa}
+                </h3>
+                <p style="margin: 2px 0 0 0; color: #64748B; font-size: 13px; font-weight: 500;">
                     Rua Paraíso, nº 514 • Pompéu/MG
                 </p>
             </div>
@@ -275,7 +288,7 @@ init_form_states()
 
 # --- 7. TELA DE ACESSO (LOGIN) ---
 if not st.session_state.logado:
-    exibir_cabecalho("RENATO FRIGOTUDO & ASSOCIADOS")
+    exibir_cabecalho(nome_empresa_usuaria=None)
     st.title("🔒 Portal de Acesso - Gestão de Desossa")
     
     with st.form("form_login"):
@@ -354,10 +367,8 @@ else:
         reset_form_states()
         st.rerun()
 
-    if st.session_state.e_admin:
-        exibir_cabecalho("PAINEL ADMINISTRATIVO")
-    else:
-        exibir_cabecalho(st.session_state.empresa_nome)
+    # Chamada unificada do cabeçalho passando a empresa atualmente conectada
+    exibir_cabecalho(nome_empresa_usuaria=st.session_state.empresa_nome)
     
     if st.session_state.e_admin:
         st.sidebar.markdown("### 🛠️ Menu Administrativo")
@@ -408,15 +419,11 @@ else:
                     
                     if uploaded_csv is not None:
                         try:
-                            # --- SOLUÇÃO INTELIGENTE PARA RESOLVER O ERRO DE CODEC ---
-                            # Tenta ler em UTF-8 (padrão) primeiro. Se falhar, tenta ler em Latin-1 (padrão do Excel em português)
                             try:
                                 df_imported = pd.read_csv(uploaded_csv, encoding="utf-8")
                             except UnicodeDecodeError:
-                                # Retorna o ponteiro do arquivo para o início para tentar ler novamente
                                 uploaded_csv.seek(0)
                                 df_imported = pd.read_csv(uploaded_csv, encoding="latin-1")
-                            # --------------------------------------------------------
                             
                             if "nome_corte" not in df_imported.columns:
                                 st.error("❌ Erro: O arquivo CSV não possui a coluna 'nome_corte'. Verifique a planilha.")
@@ -611,7 +618,7 @@ else:
                                     cursor.execute("UPDATE cortes_padrao SET tipo_desossa = ? WHERE tipo_desossa = ? AND empresa_id = ?", (novo_nome_fmt, tipo_gerenciar_sel, emp_id_ativo))
                                 conn.commit()
                                 conn.close()
-                                st.success("Nome atualizado!")
+                                st.success("Nome updated!")
                                 st.rerun()
             else:
                 st.info("Nenhum tipo disponível.")
@@ -1154,7 +1161,7 @@ else:
                         "P. Med. Compra C/ Var.", "P. Med. Venda/KG"
                     ]
                     valores_ouro = [f"R$ {compra_ouro:.2f}", f"R$ {total_vendas_ouro:.2f}", f"{peso_desossado_ouro:.3f}", f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_ouro:.2f}", f"R$ {margem_r_ouro:.2f}", f"{margem_p_ouro*100:.2f}%", f"{markup_ouro*100:.2f}%", f"R$ {p_medio_compra_ouro:.2f}", f"R$ {p_medio_compra_com_ouro:.2f}", f"R$ {p_medio_venda_ouro:.2f}"]
-                    valores_prata = [f"R$ {compra_prata:.2f}", f"R$ {total_vendas_prata:.2f}", f"{peso_desossado_prata:.3f}", f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_prata:.2f}", f"R$ {margem_r_prata:.2f}", f"{markup_prata*100:.2f}%", f"{markup_prata*100:.2f}%", f"R$ {p_medio_compra_prata:.2f}", f"R$ {p_medio_compra_com_prata:.2f}", f"R$ {p_medio_venda_prata:.2f}"]
+                    valores_prata = [f"R$ {compra_prata:.2f}", f"R$ {total_vendas_prata:.2f}", f"{peso_desossado_prata:.3f}", f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_prata:.2f}", f"R$ {margem_r_prata:.2f}", f"{margem_p_prata*100:.2f}%", f"{markup_prata*100:.2f}%", f"R$ {p_medio_compra_prata:.2f}", f"R$ {p_medio_compra_com_prata:.2f}", f"R$ {p_medio_venda_prata:.2f}"]
                     valores_totais = [f"R$ {valor_total_compra:.2f}", f"R$ {total_vendas_total:.2f}", f"{peso_desossado_total:.3f}", f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_geral:.2f}", f"R$ {margem_r_total:.2f}", f"{st_margem_p_total*100:.2f}%", f"{markup_total*100:.2f}%", f"R$ {p_medio_compra_total:.2f}", f"R$ {p_medio_compra_com_total:.2f}", f"R$ {p_medio_venda_total:.2f}"]
                     
                     for idx_ind, nome in enumerate(indicadores_nomes):
