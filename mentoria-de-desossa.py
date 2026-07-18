@@ -6,21 +6,23 @@ import os
 import io
 from fpdf import FPDF
 
-# --- 1. CONFIGURAÇÃO VISUAL DA PÁGINA ---
+# =========================================================================
+# 1. CONFIGURAÇÃO VISUAL E PALETA DE CORES PREMIUM (SLATE CORPORATE)
+# =========================================================================
 st.set_page_config(page_title="Gestão de Desossa - Renato Frigotudo", layout="wide")
 
-# --- 2. NOVA PALETA DE CORES PREMIUM E CORREÇÃO DE CONTRASTE (SLATE CORPORATE) ---
+# Aplicação de CSS customizado para garantir o contraste e sumiço de bordas pretas grossas
 st.markdown(
     """
     <style>
-    /* Fundo claro premium de alto contraste e descanso visual */
+    /* Fundo geral da aplicação */
     .stApp {
         background-color: #F8FAFC;
         font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
         color: #1E293B; 
     }
     
-    /* Campos de entrada modernos com bordas finas corporativas */
+    /* Inputs, seletores e caixas de texto modernas */
     div[data-testid="stTextInput"] input, div[data-testid="stNumberInput"] input, div[data-testid="stSelectbox"] select {
         border: 1px solid #CBD5E1 !important;
         border-radius: 8px !important;
@@ -34,14 +36,14 @@ st.markdown(
         box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1) !important;
     }
     
-    /* Nomes dos campos (labels) em tom cinza sofisticado */
+    /* Labels e títulos dos campos */
     label {
         color: #475569 !important;
         font-weight: 600 !important;
         font-size: 14px !important;
     }
     
-    /* Botões principais da tela em Azul Real */
+    /* Botões padrões do sistema */
     div.stButton > button:first-child {
         background-color: #2563EB !important;
         color: #FFFFFF !important;
@@ -56,7 +58,7 @@ st.markdown(
         background-color: #1D4ED8 !important;
     }
     
-    /* Botões dentro de formulários */
+    /* Botões específicos de dentro dos formulários */
     form button {
         background-color: #2563EB !important;
         color: #FFFFFF !important;
@@ -66,19 +68,17 @@ st.markdown(
         background-color: #1D4ED8 !important;
     }
     
-    /* Títulos limpos e profissionais */
+    /* Títulos e Cabeçalhos */
     h1, h2, h3, h4 {
         color: #0F172A !important; 
         font-weight: 700 !important;
     }
     
-    /* === CORREÇÃO CRÍTICA DO MENU LATERAL (SIDEBAR) === */
+    /* CORREÇÃO DO MENU LATERAL (SIDEBAR VISÍVEL) */
     section[data-testid="stSidebar"] {
         background-color: #0F172A !important;
         border-right: 1px solid #1E293B;
     }
-    
-    /* Força todos os textos normais, spans e labels da barra lateral a ficarem brancos/claros */
     section[data-testid="stSidebar"] p, 
     section[data-testid="stSidebar"] span, 
     section[data-testid="stSidebar"] label,
@@ -86,8 +86,6 @@ st.markdown(
         color: #F8FAFC !important;
         font-weight: 500 !important;
     }
-    
-    /* Força os botões específicos da Barra Lateral a ficarem visíveis com fundo contrastante */
     section[data-testid="stSidebar"] div.stButton > button {
         background-color: #1E293B !important;
         color: #F8FAFC !important;
@@ -98,8 +96,6 @@ st.markdown(
         background-color: #2563EB !important;
         border-color: #2563EB !important;
     }
-    
-    /* Correção do Uploader de Arquivos na Barra Lateral (Texto do drag-and-drop) */
     section[data-testid="stSidebar"] section[data-testid="stFileUploaderDropzone"] {
         background-color: #1E293B !important;
         border: 1px dashed #334155 !important;
@@ -112,12 +108,15 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --- 3. BANCO DE DADOS INTELIGENTE COM ATUALIZAÇÃO AUTOMÁTICA ---
+
+# =========================================================================
+# 2. ESTRUTURA DO BANCO DE DADOS (SQLITE AUTOMÁTICO)
+# =========================================================================
 def init_db():
     conn = sqlite3.connect("desossa_db.db")
     cursor = conn.cursor()
     
-    # Tabela de Empresas
+    # Criação da tabela de empresas parceiras
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS empresas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -128,7 +127,7 @@ def init_db():
         )
     """)
     
-    # Tabela de Tipos de Desossa
+    # Criação da tabela de tipos de desossa
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS tipos_desossa (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -138,12 +137,13 @@ def init_db():
         )
     """)
     
+    # Migração segura para colunas de empresa antigas
     try:
         cursor.execute("ALTER TABLE tipos_desossa ADD COLUMN empresa_id INTEGER DEFAULT NULL")
     except sqlite3.OperationalError:
         pass
 
-    # Tabela de Cortes Padrão
+    # Tabela contendo os cortes padrão mapeados por tipo
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS cortes_padrao (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -154,7 +154,7 @@ def init_db():
         )
     """)
     
-    # Tabela de Lotes (Ações)
+    # Tabela principal de lotes (ações executadas)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS acoes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -174,7 +174,7 @@ def init_db():
         )
     """)
     
-    # Injeção dinâmica de novas colunas em bancos de dados já existentes em produção
+    # Rotina automática de injeção de colunas para custos variáveis em bancos ativos
     novas_colunas = [
         ("p_cartao", "REAL DEFAULT 0.0"),
         ("p_impostos", "REAL DEFAULT 0.0"),
@@ -187,7 +187,7 @@ def init_db():
         except sqlite3.OperationalError:
             pass
 
-    # Tabela de Cortes vinculados às ações
+    # Tabela de cortes associados a um lote salvo
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS cortes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -200,19 +200,15 @@ def init_db():
         )
     """)
     
-    # Carga inicial padrão de tipos de desossa
+    # Inserção de dados básicos padrão caso o banco esteja vazio
     cursor.execute("SELECT COUNT(*) FROM tipos_desossa")
     if cursor.fetchone()[0] == 0:
         tipos_iniciais = [
-            ("QUARTO TRASEIRO", None), 
-            ("QUARTO DIANTEIRO", None), 
-            ("VACA CASADA", None), 
-            ("BOI CASADO", None), 
-            ("SUINO", None)
+            ("QUARTO TRASEIRO", None), ("QUARTO DIANTEIRO", None), 
+            ("VACA CASADA", None), ("BOI CASADO", None), ("SUINO", None)
         ]
         cursor.executemany("INSERT INTO tipos_desossa (nome, empresa_id) VALUES (?, ?)", tipos_iniciais)
     
-    # Carga inicial global de cortes
     cursor.execute("SELECT COUNT(*) FROM cortes_padrao")
     if cursor.fetchone()[0] == 0:
         cortes_iniciais = [
@@ -250,56 +246,26 @@ def get_tipos_desossa(empresa_id):
     conn.close()
     return tipos
 
-# --- 4. CONTROLE DE ESTADOS DO FORMULÁRIO (MECANISMO ANTIRRESÍDUOS) ---
+
+# =========================================================================
+# 3. CONTROLE DE ESTADOS DO FORMULÁRIO (ANTI-TRAVAMENTO)
+# =========================================================================
 def init_form_states():
-    if "input_data" not in st.session_state:
-        st.session_state.input_data = datetime.date.today()
-    if "input_peso_bruto" not in st.session_state:
-        st.session_state.input_peso_bruto = 0.0
-    if "input_preco_animal" not in st.session_state:
-        st.session_state.input_preco_animal = 0.0
-    if "input_ossos" not in st.session_state:
-        st.session_state.input_ossos = 0.0
-    if "input_quebra" not in st.session_state:
-        st.session_state.input_quebra = 0.0
-    if "input_exsudato" not in st.session_state:
-        st.session_state.input_exsudato = 0.0
-    if "input_p_cartao" not in st.session_state:
-        st.session_state.input_p_cartao = 0.0
-    if "input_p_impostos" not in st.session_state:
-        st.session_state.input_p_impostos = 0.0
-    if "input_p_embalagens" not in st.session_state:
-        st.session_state.input_p_embalagens = 0.0
-    if "input_p_comissao" not in st.session_state:
-        st.session_state.input_p_comissao = 0.0
-    if "input_corte_nome_manual" not in st.session_state:
-        st.session_state.input_corte_nome_manual = ""
-    if "input_corte_peso" not in st.session_state:
-        st.session_state.input_corte_peso = 0.0
-    if "input_corte_preco" not in st.session_state:
-        st.session_state.input_corte_preco = 0.0
+    if "form_version" not in st.session_state:
+        st.session_state.form_version = 0
     if "uploader_key" not in st.session_state:
         st.session_state.uploader_key = 0
     if "cortes_temp" not in st.session_state:
         st.session_state.cortes_temp = []
 
 def reset_form_states():
-    st.session_state.input_data = datetime.date.today()
-    st.session_state.input_peso_bruto = 0.0
-    st.session_state.input_preco_animal = 0.0
-    st.session_state.input_ossos = 0.0
-    st.session_state.input_quebra = 0.0
-    st.session_state.input_exsudato = 0.0
-    st.session_state.input_p_cartao = 0.0
-    st.session_state.input_p_impostos = 0.0
-    st.session_state.input_p_embalagens = 0.0
-    st.session_state.input_p_comissao = 0.0
-    st.session_state.input_corte_nome_manual = ""
-    st.session_state.input_corte_peso = 0.0
-    st.session_state.input_corte_preco = 0.0
+    st.session_state.form_version += 1
     st.session_state.cortes_temp = []
 
-# --- 5. CABEÇALHO PADRONIZADO ---
+
+# =========================================================================
+# 4. ELEMENTOS VISUAIS DE CABEÇALHO
+# =========================================================================
 def exibir_cabecalho(nome_empresa_usuaria=None):
     col_logo, col_info = st.columns([1, 4])
     with col_logo:
@@ -309,10 +275,7 @@ def exibir_cabecalho(nome_empresa_usuaria=None):
             st.markdown("### 🍖 [LOGO]")
     with col_info:
         cabecalho_principal = "RENATO FRIGOTUDO & ASSOCIADOS"
-        if nome_empresa_usuaria:
-            subtitulo_empresa = nome_empresa_usuaria.upper()
-        else:
-            subtitulo_empresa = "PORTAL DE ACESSO"
+        subtitulo_empresa = nome_empresa_usuaria.upper() if nome_empresa_usuaria else "PORTAL DE ACESSO"
 
         st.markdown(
             f"""
@@ -332,7 +295,10 @@ def exibir_cabecalho(nome_empresa_usuaria=None):
         )
     st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px; border-top: 3px solid #1E3A8A;'>", unsafe_allow_html=True)
 
-# --- 6. CONTROLE DE SESSÃO ---
+
+# =========================================================================
+# 5. GERENCIAMENTO DE SESSÃO E LOGIN
+# =========================================================================
 if "logado" not in st.session_state:
     st.session_state.logado = False
     st.session_state.empresa_id = None
@@ -341,7 +307,6 @@ if "logado" not in st.session_state:
 
 init_form_states()
 
-# --- 7. TELA DE ACESSO (LOGIN) ---
 if not st.session_state.logado:
     exibir_cabecalho(nome_empresa_usuaria=None)
     st.title("🔒 Portal de Acesso - Gestão de Desossa")
@@ -384,7 +349,7 @@ if not st.session_state.logado:
                     st.error("Usuário ou senha incorretos.")
 
 else:
-    # --- MENU LATERAL (BOTÕES AGORA 100% VISÍVEIS COM CSS CORRIGIDO) ---
+    # --- MENUS DE BACKUP E RESTAURAÇÃO LATERAL ---
     st.sidebar.markdown(f"**Ativo como:**\n{st.session_state.empresa_nome}")
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 💾 Backup do Sistema")
@@ -409,7 +374,7 @@ else:
                     f.write(backup_upload.getbuffer())
                 st.sidebar.success("🎉 Sistema restaurado! Recarregando...")
                 st.rerun()
-            except Exception as e:
+            except Exception as f_err:
                 st.sidebar.error("Erro ao restaurar arquivo.")
                 
     st.sidebar.markdown("---")
@@ -429,10 +394,13 @@ else:
         st.sidebar.markdown("### 🥩 Menu de Operações")
         menu = st.sidebar.radio("Selecione a Tela:", ["Nova Desossa", "Histórico & Edição", "Gerenciar Cadastro de Cortes"])
 
-    # ==================== TELAS EXCLUSIVAS DO ADMINISTRADOR ====================
+
+    # =========================================================================
+    # 6. TELAS EXCLUSIVAS DO ADMINISTRADOR
+    # =========================================================================
     if st.session_state.e_admin and menu != "Gerenciar Cadastro de Cortes":
         
-        # --- IMPORTAR CORTES VIA CSV PARA EMPRESAS ---
+        # --- TELA: IMPORTAÇÃO DE PLANILHA CSV ---
         if menu == "Importar Cortes (CSV)":
             st.header("📥 Importação Massiva de Cortes (CSV)")
             st.info("Utilize esta tela para importar uma planilha de cortes diretamente para uma empresa cadastrada.")
@@ -489,7 +457,6 @@ else:
                                 if st.button("🚀 Confirmar e Importar para o Banco de Dados"):
                                     conn = get_connection()
                                     cursor = conn.cursor()
-                                    
                                     sucessos = 0
                                     duplicados = 0
                                     
@@ -506,16 +473,14 @@ else:
                                             
                                     conn.commit()
                                     conn.close()
-                                    
                                     st.balloons()
-                                    st.success(f"🎉 Importação Concluída! Cortes salvos com sucesso: {sucessos} | Cortes duplicados ignorados: {duplicados}")
-                                    
+                                    st.success(f"🎉 Importação Concluída! Cortes salvos: {sucessos} | Duplicados ignorados: {duplicados}")
                                     st.session_state.uploader_key += 1
                                     st.rerun()
-                                    
-                        except Exception as e:
-                            st.error(f"❌ Ocorreu um erro ao processar o arquivo: {e}")
+                        except Exception as e_csv:
+                            st.error(f"❌ Ocorreu um erro ao processar o arquivo: {e_csv}")
         
+        # --- TELA: CADASTRO DE EMPRESAS ---
         elif menu == "Cadastrar Empresa":
             st.header("📝 Cadastrar Nova Empresa Parceira")
             with st.form("form_cadastro_admin"):
@@ -539,6 +504,7 @@ else:
                         except sqlite3.IntegrityError:
                             st.error("Este nome de usuário já existe.")
                             
+        # --- TELA: LISTAGEM E BLOQUEIO DE EMPRESAS ---
         elif menu == "Gerenciar Empresas":
             st.header("🏢 Painel de Controle de Empresas")
             conn = get_connection()
@@ -602,7 +568,10 @@ else:
                                     st.error("Usuário já existe.")
                     st.markdown("<hr style='margin: 4px 0; border-top: 1px dashed #e0e0e0;'>", unsafe_allow_html=True)
 
-    # ==================== GERENCIAR CADASTRO DE CORTES (ISOLADO) ====================
+
+    # =========================================================================
+    # 7. TELA GLOBAL: GERENCIAR CADASTRO DE CORTES
+    # =========================================================================
     elif menu == "Gerenciar Cadastro de Cortes":
         st.header("🥩 Configurar e Gerenciar Tipos de Desossa e Cortes")
         emp_id_ativo = st.session_state.empresa_id
@@ -617,7 +586,6 @@ else:
                 if st.form_submit_button("💾 Salvar Tipo") and novo_tipo_des_input:
                     tipo_fmt = novo_tipo_des_input.strip().upper()
                     db_id_dono = None if st.session_state.e_admin else emp_id_ativo
-                    
                     try:
                         conn = get_connection()
                         cursor = conn.cursor()
@@ -651,7 +619,7 @@ else:
                             cursor.execute("DELETE FROM cortes_padrao WHERE tipo_desossa = ? AND empresa_id = ?", (tipo_gerenciar_sel, emp_id_ativo))
                         conn.commit()
                         conn.close()
-                        st.success(f"Tipo '{tipo_gerenciar_sel}' e os cortes excluídos!")
+                        st.success(f"Tipo '{tipo_gerenciar_sel}' e os seus cortes associados foram removidos!")
                         st.rerun()
                         
                 if alterar_tipo_chk:
@@ -670,13 +638,12 @@ else:
                                     cursor.execute("UPDATE cortes_padrao SET tipo_desossa = ? WHERE tipo_desossa = ? AND empresa_id = ?", (novo_nome_fmt, tipo_gerenciar_sel, emp_id_ativo))
                                 conn.commit()
                                 conn.close()
-                                st.success("Nome updated!")
+                                st.success("Nome alterado com sucesso!")
                                 st.rerun()
             else:
-                st.info("Nenhum tipo disponível.")
+                st.info("Nenhum tipo disponível para alteração.")
 
         st.markdown("---")
-        
         st.markdown("### 🥩 Cadastro e Edição de Cortes")
         tipos_disponiveis = get_tipos_desossa(emp_id_ativo)
         
@@ -753,11 +720,15 @@ else:
         else:
             st.warning("Cadastre um tipo de desossa primeiro.")
 
-    # ==================== TELAS DAS EMPRESAS PARCEIRAS ====================
+
+    # =========================================================================
+    # 8. TELAS OPERACIONAIS DAS EMPRESAS PARCEIRAS
+    # =========================================================================
     else:
         emp_id_ativo = st.session_state.empresa_id
+        v_form = st.session_state.form_version
         
-        # ==================== TELA: NOVA DESOSSA ====================
+        # --- TELA: LANÇAR NOVA DESOSSA ---
         if menu == "Nova Desossa":
             st.header("📋 Lançar Nova Ação de Desossa")
             tipos_empresa = get_tipos_desossa(emp_id_ativo)
@@ -768,25 +739,24 @@ else:
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.markdown("##### 📦 Parâmetros Gerais")
-                    data_input = st.date_input("Data da Ação", st.session_state.input_data, key="date_picker")
-                    st.session_state.input_data = data_input
-                    
-                    tipo_animal = st.selectbox("Tipo de Desossa", tipos_empresa, key="tipo_animal_select")
-                    peso_bruto = st.number_input("Peso Bruto (KG)", min_value=0.0, step=0.001, format="%.3f", key="input_peso_bruto")
-                    preco_animal_kg = st.number_input("Preço do Animal (R$/KG)", min_value=0.0, step=0.01, key="input_preco_animal")
+                    # Atribuição de chaves seguras utilizando o sufixo v_form
+                    data_input = st.date_input("Data da Ação", datetime.date.today(), key=f"date_picker_{v_form}")
+                    tipo_animal = st.selectbox("Tipo de Desossa", tipos_empresa, key=f"tipo_animal_select_{v_form}")
+                    peso_bruto = st.number_input("Peso Bruto (KG)", min_value=0.0, step=0.001, format="%.3f", key=f"input_peso_bruto_{v_form}")
+                    preco_animal_kg = st.number_input("Preço do Animal (R$/KG)", min_value=0.0, step=0.01, key=f"input_preco_animal_{v_form}")
                     
                 with col2:
                     st.markdown("##### ⚖️ Rendimento e Perdas")
-                    ossos_muxiba = st.number_input("Ossos / Muxiba (KG)", min_value=0.0, step=0.001, format="%.3f", key="input_ossos")
-                    quebra_nao_identificada = st.number_input("Quebra Não Identificada (KG)", min_value=0.0, step=0.001, format="%.3f", key="input_quebra")
-                    exsudato_escorrimento = st.number_input("Exsudato / Escorrimento (KG)", min_value=0.0, step=0.001, format="%.3f", key="input_exsudato")
+                    ossos_muxiba = st.number_input("Ossos / Muxiba (KG)", min_value=0.0, step=0.001, format="%.3f", key=f"input_ossos_{v_form}")
+                    quebra_nao_identificada = st.number_input("Quebra Não Identificada (KG)", min_value=0.0, step=0.001, format="%.3f", key=f"input_quebra_{v_form}")
+                    exsudato_escorrimento = st.number_input("Exsudato / Escorrimento (KG)", min_value=0.0, step=0.001, format="%.3f", key=f"input_exsudato_{v_form}")
 
                 with col3:
                     st.markdown("##### 📊 Custos Variáveis (%)")
-                    p_cartao = st.number_input("Taxas de Cartão (%)", min_value=0.0, max_value=100.0, step=0.01, key="input_p_cartao")
-                    p_impostos = st.number_input("Impostos (%)", min_value=0.0, max_value=100.0, step=0.01, key="input_p_impostos")
-                    p_embalagens = st.number_input("Embalagens (%)", min_value=0.0, max_value=100.0, step=0.01, key="input_p_embalagens")
-                    p_comissao = st.number_input("Comissão (%)", min_value=0.0, max_value=100.0, step=0.01, key="input_p_comissao")
+                    p_cartao = st.number_input("Taxas de Cartão (%)", min_value=0.0, max_value=100.0, step=0.01, key=f"input_p_cartao_{v_form}")
+                    p_impostos = st.number_input("Impostos (%)", min_value=0.0, max_value=100.0, step=0.01, key=f"input_p_impostos_{v_form}")
+                    p_embalagens = st.number_input("Embalagens (%)", min_value=0.0, max_value=100.0, step=0.01, key=f"input_p_embalagens_{v_form}")
+                    p_comissao = st.number_input("Comissão (%)", min_value=0.0, max_value=100.0, step=0.01, key=f"input_p_comissao_{v_form}")
 
                 st.subheader("🥩 Cortes do Lote")
                 
@@ -800,23 +770,20 @@ else:
                 
                 lista_cortes_disponiveis = df_rec_cortes["nome_corte"].tolist() if not df_rec_cortes.empty else []
                 
-                if "cortes_temp" not in st.session_state:
-                    st.session_state.cortes_temp = []
-                    
-                with st.form("adicionar_corte"):
+                with st.form(f"adicionar_corte_{v_form}"):
                     col_c1, col_c2, col_c3, col_c4 = st.columns(4)
                     
                     if lista_cortes_disponiveis:
                         nome_corte = col_c1.selectbox("Corte Cadastrado", lista_cortes_disponiveis)
                     else:
-                        nome_corte = col_c1.text_input("Nome do Corte Manual", key="input_corte_nome_manual")
+                        nome_corte = col_c1.text_input("Nome do Corte Manual", key=f"input_corte_nome_manual_{v_form}")
                         
                     qualidade = col_c2.selectbox("Qualidade", ["OURO", "PRATA"])
-                    peso_corte = col_c3.number_input("Peso do Corte (KG)", min_value=0.0, step=0.001, format="%.3f", key="input_corte_peso")
-                    preco_venda = col_c4.number_input("Preço de Venda (R$/KG)", min_value=0.0, step=0.01, key="input_corte_preco")
+                    peso_corte = col_c3.number_input("Peso do Corte (KG)", min_value=0.0, step=0.001, format="%.3f", key=f"input_corte_peso_{v_form}")
+                    preco_venda = col_c4.number_input("Preço de Venda (R$/KG)", min_value=0.0, step=0.01, key=f"input_corte_preco_{v_form}")
                     
                     submitted = st.form_submit_button("➕ Adicionar Corte")
-                    if submitted and (nome_corte or (not lista_cortes_disponiveis and nome_corte != "")):
+                    if submitted and nome_corte != "":
                         name_fmt_c = nome_corte.upper()
                         st.session_state.cortes_temp.append({
                             "nome_corte": name_fmt_c,
@@ -824,10 +791,7 @@ else:
                             "peso": peso_corte,
                             "preco_venda": preco_venda
                         })
-                        st.success(f"Adicionado!")
-                        st.session_state.input_corte_nome_manual = ""
-                        st.session_state.input_corte_peso = 0.0
-                        st.session_state.input_corte_preco = 0.0
+                        st.success(f"Corte {name_fmt_c} adicionado!")
                         st.rerun()
 
                 if st.session_state.cortes_temp:
@@ -835,15 +799,15 @@ else:
                     for idx, c in enumerate(st.session_state.cortes_temp):
                         col_ver, col_btn = st.columns([5, 1])
                         col_ver.write(f"**{c['nome_corte']}** ({c['qualidade']}) - {c['peso']:.3f} KG - R$ {c['preco_venda']:.2f}/KG")
-                        if col_btn.button("❌ Remover", key=f"rem_temp_{idx}"):
+                        if col_btn.button("❌ Remover", key=f"rem_temp_{idx}_{v_form}"):
                             st.session_state.cortes_temp.pop(idx)
                             st.rerun()
                             
-                    if st.button("Limpar Todos os Cortes"):
+                    if st.button("Limpar Todos os Cortes", key=f"clear_all_{v_form}"):
                         st.session_state.cortes_temp = []
                         st.rerun()
 
-                if st.button("💾 Salvar Ação no Banco de Dados"):
+                if st.button("💾 Salvar Ação no Banco de Dados", key=f"btn_salvar_db_{v_form}"):
                     if not st.session_state.cortes_temp:
                         st.error("Adicione pelo menos um corte antes de salvar!")
                     else:
@@ -868,7 +832,7 @@ else:
                         reset_form_states()
                         st.rerun()
 
-        # ==================== TELA: HISTÓRICO & EDIÇÃO ====================
+        # --- TELA: HISTÓRICO & EDIÇÃO ---
         elif menu == "Histórico & Edição":
             st.header("📂 Histórico & Edição de Desossas")
             tipos_empresa = get_tipos_desossa(emp_id_ativo)
@@ -909,7 +873,7 @@ else:
                 tx_embalagens = acao_row["p_embalagens"] if "p_embalagens" in acao_row and acao_row["p_embalagens"] is not None else 0.0
                 tx_comissao = acao_row["p_comissao"] if "p_comissao" in acao_row and acao_row["p_comissao"] is not None else 0.0
 
-                # --- EDICÃO DA CARCAÇA ---
+                # --- SUB-BLOCO: EDIÇÃO DA CARCAÇA ---
                 with st.expander("📝 EDITAR DADOS GERAIS DA CARCAÇA"):
                     col_ed1, col_ed2 = st.columns(2)
                     with col_ed1:
@@ -932,10 +896,10 @@ else:
                         """, (str(ed_data), ed_tipo, ed_p_bruto, ed_preco_animal, ed_ossos, ed_quebra, ed_exsudato, id_selecionado, emp_id_ativo))
                         conn.commit()
                         conn.close()
-                        st.success("✅ Carcaça atualizada!")
+                        st.success("✅ Carcaça atualizada com sucesso!")
                         st.rerun()
 
-                # --- GERENCIAMENTO DE CORTES ---
+                # --- SUB-BLOCO: GERENCIAMENTO UNITÁRIO DE CORTES ---
                 with st.expander("🥩 GERENCIAR CORTES INDIVIDUALMENTE"):
                     for i, corte_row in df_cortes.iterrows():
                         st.markdown(f"##### Corte: **{corte_row['nome_corte']}**")
@@ -963,7 +927,7 @@ else:
                             st.rerun()
                         st.markdown("---")
 
-                # --- CÁLCULOS ---
+                # --- BLOCO MATEMÁTICO DE APURAÇÃO ---
                 p_bruto = acao_row["peso_bruto"]
                 p_comp_kg = acao_row["preco_animal_kg"]
                 valor_total_compra = p_bruto * p_comp_kg
@@ -985,7 +949,6 @@ else:
                 porc_final = (peso_final / p_bruto * 100) if p_bruto > 0 else 0.0
                 porc_total_quebra = (total_quebra / p_bruto * 100) if p_bruto > 0 else 0.0
 
-                # Apuração Geral
                 st.subheader("📊 Apuração Geral do Lote")
                 apuracao_data = {
                     "Apuração do Lote": ["PESO BRUTO/KG", "OSSOS/MUXIBA", "QUEBRA NÃO IDENTIF", "ESCORRIMENTO", "Peso Final", "TOTAL DE QUEBRA"],
@@ -995,7 +958,7 @@ else:
                 }
                 st.table(pd.DataFrame(apuracao_data).set_index("Apuração do Lote"))
 
-                # Indicadores
+                # Lógica dos Coeficientes e Rateio de Custos
                 total_vendas_ouro = sum(df_cortes[df_cortes["qualidade"] == "OURO"]["peso"] * df_cortes[df_cortes["qualidade"] == "OURO"]["preco_venda"])
                 total_vendas_prata = sum(df_cortes[df_cortes["qualidade"] == "PRATA"]["peso"] * df_cortes[df_cortes["qualidade"] == "PRATA"]["preco_venda"])
                 total_vendas_total = total_vendas_ouro + total_vendas_prata
@@ -1054,7 +1017,7 @@ else:
                 p_medio_venda_prata = total_vendas_prata / peso_desossado_prata if peso_desossado_prata > 0 else 0
                 p_medio_venda_total = total_vendas_total / peso_desossado_total if peso_desossado_total > 0 else 0
                 
-                # --- QUADRO DE INDICADORES (PAINEL DE RESULTADOS) ---
+                # --- QUADRO DE INDICADORES ---
                 st.markdown(
                     f"""
                     <div style="background-color: #1E3A8A; padding: 12px; border-radius: 6px; margin-top: 20px; margin-bottom: 10px; color: #FFFFFF; font-weight: bold;">
@@ -1091,7 +1054,7 @@ else:
                 }
                 st.table(pd.DataFrame(indicadores_data).set_index("INDICADORES"))
                 
-                # --- NOVO PAINEL DE DETALHES DE RESULTADOS COM CUSTOS VARIÁVEIS INSERIDOS ---
+                # --- QUADRO INTEGRAL ESTILO MODELO EXCEL ---
                 st.markdown(
                     """
                     <div style="background-color: #334155; padding: 10px; border-radius: 6px; margin-top: 20px; margin-bottom: 10px; color: #FFFFFF; font-weight: bold;">
@@ -1119,23 +1082,14 @@ else:
                     rendimento_linha = (peso / peso_final) * 100 if peso_final > 0 else 0
                     
                     linhas_detalhes.append({
-                        "Corte": row_l["nome_corte"],
-                        "Qualidade": row_l["qualidade"],
-                        "Peso (KG)": peso,
-                        "Preço Venda (R$/KG)": p_venda,
-                        "Faturamento Total": fat_linha,
-                        "Cartão (R$/KG)": v_cartao,
-                        "Impostos (R$/KG)": v_impostos,
-                        "Embalagem (R$/KG)": v_embalagem,
-                        "Comissão (R$/KG)": v_comissao,
-                        "Custo Efetivo/KG": custo_efetivo_kg,
-                        "Custo Efetivo Total": custo_efetivo_total,
-                        "Margem Líquida (R$)": lucro_bruto_linha,
-                        "Rendimento %": rendimento_linha
+                        "Corte": row_l["nome_corte"], "Qualidade": row_l["qualidade"], "Peso (KG)": peso,
+                        "Preço Venda (R$/KG)": p_venda, "Faturamento Total": fat_linha,
+                        "Cartão (R$/KG)": v_cartao, "Impostos (R$/KG)": v_impostos, "Embalagem (R$/KG)": v_embalagem, "Comissão (R$/KG)": v_comissao,
+                        "Custo Efetivo/KG": custo_efetivo_kg, "Custo Efetivo Total": custo_efetivo_total,
+                        "Margem Líquida (R$)": lucro_bruto_linha, "Rendimento %": rendimento_linha
                     })
                     
                 df_final = pd.DataFrame(linhas_detalhes)
-                
                 total_peso = df_final["Peso (KG)"].sum()
                 total_faturamento = df_final["Faturamento Total"].sum()
                 total_custo_total = df_final["Custo Efetivo Total"].sum()
@@ -1150,7 +1104,7 @@ else:
                     "Margem Líquida (R$)": total_margem_bruta, "Rendimento %": total_rendimento
                 }])
                 
-                df_com_total = pd.concat([df_final, linha_total], ignore_index=True)
+                df_com_total = pd.concat([df_final, line_total if 'line_total' in locals() else linha_total], ignore_index=True)
                 
                 def estilizar_margem_bruta(val):
                     try:
@@ -1176,7 +1130,7 @@ else:
                     }).map(estilizar_margem_bruta, subset=["Margem Líquida (R$)"])
                 )
                 
-                # ==================== PDF COMPLETO COM TODAS AS COLUNAS DE CUSTO INSERIDAS ====================
+                # --- EXPORTAÇÃO COMPLETA EM PDF ---
                 st.markdown("### 🖨️ Exportação de Relatórios")
                 
                 def gerar_pdf_lote():
@@ -1184,7 +1138,6 @@ else:
                     pdf.add_page()
                     pdf.set_font("Arial", size=10)
                     
-                    # Cabeçalho do PDF
                     pdf.set_fill_color(30, 58, 138)
                     pdf.rect(10, 10, 277, 15, "F")
                     pdf.set_text_color(255, 255, 255)
@@ -1207,7 +1160,6 @@ else:
                     pdf.cell(277, 8, f"LOTE #{id_selecionado} - {tipo_animal_atual} | Data: {data_br} | Taxas: Cartao {tx_cartao}% | Impostos {tx_impostos}% | Embalagens {tx_embalagens}% | Comissao {tx_comissao}%", ln=1)
                     pdf.ln(2)
                     
-                    # Tabela Detalhada Impressa no Relatório PDF contendo o Quadro de Custos Variáveis requisitado
                     pdf.set_fill_color(234, 179, 8)
                     pdf.set_font("Arial", style="B", size=8)
                     pdf.cell(35, 6, "Corte", border=1, fill=True)
@@ -1248,8 +1200,6 @@ else:
                         pdf.cell(14, 5, f"{r['Rendimento %']:.1f}%", border=1, align="C")
                         pdf.ln()
                         
-                    # Linha do Total Geral
-                    pdf.set_font("Arial", style="B", size=8)
                     pdf.cell(35, 6, "TOTAL SOMA", border=1, fill=True)
                     pdf.cell(15, 6, "", border=1, fill=True)
                     pdf.cell(18, 6, f"{total_peso:.3f}", border=1, align="C", fill=True)
