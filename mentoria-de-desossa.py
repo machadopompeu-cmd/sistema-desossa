@@ -9,7 +9,7 @@ from fpdf import FPDF
 # --- 1. CONFIGURAÇÃO VISUAL DA PÁGINA ---
 st.set_page_config(page_title="Gestão de Desossa - Renato Frigotudo", layout="wide")
 
-# --- 2. NOVA PALETA DE CORES PREMIUM E ELEGANTE (SLATE CORPORATE) ---
+# --- 2. NOVA PALETA DE CORES PREMIUM E CORREÇÃO DE CONTRASTE (SLATE CORPORATE) ---
 st.markdown(
     """
     <style>
@@ -41,7 +41,7 @@ st.markdown(
         font-size: 14px !important;
     }
     
-    /* Botões principais em Azul Real com cantos suavizados */
+    /* Botões principais da tela em Azul Real */
     div.stButton > button:first-child {
         background-color: #2563EB !important;
         color: #FFFFFF !important;
@@ -72,14 +72,40 @@ st.markdown(
         font-weight: 700 !important;
     }
     
-    /* Menu Lateral Dark Enterprise de Altíssimo Contraste */
+    /* === CORREÇÃO CRÍTICA DO MENU LATERAL (SIDEBAR) === */
     section[data-testid="stSidebar"] {
         background-color: #0F172A !important;
         border-right: 1px solid #1E293B;
     }
-    section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] span, section[data-testid="stSidebar"] label {
+    
+    /* Força todos os textos normais, spans e labels da barra lateral a ficarem brancos/claros */
+    section[data-testid="stSidebar"] p, 
+    section[data-testid="stSidebar"] span, 
+    section[data-testid="stSidebar"] label,
+    section[data-testid="stSidebar"] h3 {
         color: #F8FAFC !important;
         font-weight: 500 !important;
+    }
+    
+    /* Força os botões específicos da Barra Lateral a ficarem visíveis com fundo contrastante */
+    section[data-testid="stSidebar"] div.stButton > button {
+        background-color: #1E293B !important;
+        color: #F8FAFC !important;
+        border: 1px solid #334155 !important;
+        width: 100% !important;
+    }
+    section[data-testid="stSidebar"] div.stButton > button:hover {
+        background-color: #2563EB !important;
+        border-color: #2563EB !important;
+    }
+    
+    /* Correção do Uploader de Arquivos na Barra Lateral (Texto do drag-and-drop) */
+    section[data-testid="stSidebar"] section[data-testid="stFileUploaderDropzone"] {
+        background-color: #1E293B !important;
+        border: 1px dashed #334155 !important;
+    }
+    section[data-testid="stSidebar"] section[data-testid="stFileUploaderDropzone"] div {
+        color: #F8FAFC !important;
     }
     </style>
     """,
@@ -128,7 +154,7 @@ def init_db():
         )
     """)
     
-    # Tabela de Lotes (Ações) - Atualizada para conter as colunas de custos variáveis percentuais
+    # Tabela de Lotes (Ações)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS acoes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -258,7 +284,6 @@ def init_form_states():
         st.session_state.cortes_temp = []
 
 def reset_form_states():
-    # Zera todas as caixas de digitação para limpar resíduos de ações anteriores
     st.session_state.input_data = datetime.date.today()
     st.session_state.input_peso_bruto = 0.0
     st.session_state.input_preco_animal = 0.0
@@ -359,7 +384,7 @@ if not st.session_state.logado:
                     st.error("Usuário ou senha incorretos.")
 
 else:
-    # --- MENU LATERAL ---
+    # --- MENU LATERAL (BOTÕES AGORA 100% VISÍVEIS COM CSS CORRIGIDO) ---
     st.sidebar.markdown(f"**Ativo como:**\n{st.session_state.empresa_nome}")
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 💾 Backup do Sistema")
@@ -740,7 +765,6 @@ else:
             if not tipos_empresa:
                 st.warning("Cadastre os seus 'Tipos de Desossa' no menu 'Gerenciar Cadastro de Cortes' primeiro.")
             else:
-                # Modificado para 3 colunas para incluir harmonicamente os parâmetros de custos variáveis
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.markdown("##### 📦 Parâmetros Gerais")
@@ -825,7 +849,6 @@ else:
                     else:
                         conn = get_connection()
                         cursor = conn.cursor()
-                        # Armazena os percentuais juntamente com as variáveis do cabeçalho da ação
                         cursor.execute("""
                             INSERT INTO acoes (empresa_id, data_acao, tipo_animal, peso_bruto, preco_animal_kg, ossos_muxiba, quebra_nao_identificada, exsudato_escorrimento, p_cartao, p_impostos, p_embalagens, p_comissao)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -842,7 +865,7 @@ else:
                         conn.close()
                         
                         st.success("🎉 Lote de Desossa salvo com sucesso!")
-                        reset_form_states() # Limpeza ativa anti-resíduos
+                        reset_form_states()
                         st.rerun()
 
         # ==================== TELA: HISTÓRICO & EDIÇÃO ====================
@@ -881,7 +904,6 @@ else:
                 df_cortes = pd.read_sql_query(f"SELECT * FROM cortes WHERE acao_id = {id_selecionado}", conn)
                 conn.close()
                 
-                # Resgate seguro das variáveis de taxas percentuais
                 tx_cartao = acao_row["p_cartao"] if "p_cartao" in acao_row and acao_row["p_cartao"] is not None else 0.0
                 tx_impostos = acao_row["p_impostos"] if "p_impostos" in acao_row and acao_row["p_impostos"] is not None else 0.0
                 tx_embalagens = acao_row["p_embalagens"] if "p_embalagens" in acao_row and acao_row["p_embalagens"] is not None else 0.0
@@ -973,7 +995,7 @@ else:
                 }
                 st.table(pd.DataFrame(apuracao_data).set_index("Apuração do Lote"))
 
-                # Indicadores integrando as novas colunas de custos variáveis
+                # Indicadores
                 total_vendas_ouro = sum(df_cortes[df_cortes["qualidade"] == "OURO"]["peso"] * df_cortes[df_cortes["qualidade"] == "OURO"]["preco_venda"])
                 total_vendas_prata = sum(df_cortes[df_cortes["qualidade"] == "PRATA"]["peso"] * df_cortes[df_cortes["qualidade"] == "PRATA"]["preco_venda"])
                 total_vendas_total = total_vendas_ouro + total_vendas_prata
@@ -989,13 +1011,11 @@ else:
                 custo_efetivo_total_ouro = 0
                 custo_efetivo_total_prata = 0
                 
-                # Formulação matemática por qualidade do lote
                 for idx_c, row_c in df_cortes.iterrows():
                     peso = row_c['peso']
                     p_venda = row_c['preco_venda']
                     p_custo_kg = p_venda * coeficiente
                     
-                    # Dedução das taxas variáveis por corte individual baseada na venda
                     v_cartao_kg = p_venda * (tx_cartao / 100)
                     v_impostos_kg = p_venda * (tx_impostos / 100)
                     v_embalagens_kg = p_venda * (tx_embalagens / 100)
@@ -1034,7 +1054,7 @@ else:
                 p_medio_venda_prata = total_vendas_prata / peso_desossado_prata if peso_desossado_prata > 0 else 0
                 p_medio_venda_total = total_vendas_total / peso_desossado_total if peso_desossado_total > 0 else 0
                 
-                # --- RENDERIZAÇÃO DO QUADRO DE INDICADORES ---
+                # --- QUADRO DE INDICADORES (PAINEL DE RESULTADOS) ---
                 st.markdown(
                     f"""
                     <div style="background-color: #1E3A8A; padding: 12px; border-radius: 6px; margin-top: 20px; margin-bottom: 10px; color: #FFFFFF; font-weight: bold;">
@@ -1071,6 +1091,7 @@ else:
                 }
                 st.table(pd.DataFrame(indicadores_data).set_index("INDICADORES"))
                 
+                # --- NOVO PAINEL DE DETALHES DE RESULTADOS COM CUSTOS VARIÁVEIS INSERIDOS ---
                 st.markdown(
                     """
                     <div style="background-color: #334155; padding: 10px; border-radius: 6px; margin-top: 20px; margin-bottom: 10px; color: #FFFFFF; font-weight: bold;">
@@ -1079,7 +1100,6 @@ else:
                     """, unsafe_allow_html=True
                 )
                 
-                # --- CONSTRUÇÃO DO DATAFRAME COMPLETO COM CUSTOS LINHA A LINHA ---
                 linhas_detalhes = []
                 for idx_l, row_l in df_cortes.iterrows():
                     peso = row_l["peso"]
@@ -1087,7 +1107,6 @@ else:
                     fat_linha = peso * p_venda
                     p_custo_kg = p_venda * coeficiente
                     
-                    # Deduções de impostos e taxas baseadas fielmente no Preço de Venda por KG
                     v_cartao = p_venda * (tx_cartao / 100)
                     v_impostos = p_venda * (tx_impostos / 100)
                     v_embalagem = p_venda * (tx_embalagens / 100)
@@ -1133,7 +1152,6 @@ else:
                 
                 df_com_total = pd.concat([df_final, linha_total], ignore_index=True)
                 
-                # Realce de vermelho suave em caso de prejuízo operacional na linha
                 def estilizar_margem_bruta(val):
                     try:
                         if isinstance(val, (int, float)) and val <= 0:
@@ -1158,15 +1176,15 @@ else:
                     }).map(estilizar_margem_bruta, subset=["Margem Líquida (R$)"])
                 )
                 
-                # ==================== PDF COM INTEGRAÇÃO DE CUSTOS VARIÁVEIS ====================
+                # ==================== PDF COMPLETO COM TODAS AS COLUNAS DE CUSTO INSERIDAS ====================
                 st.markdown("### 🖨️ Exportação de Relatórios")
                 
                 def gerar_pdf_lote():
-                    pdf = FPDF(orientation='L', unit='mm', format='A4') # Alterado para Paisagem para caber todas as colunas de custos
+                    pdf = FPDF(orientation='L', unit='mm', format='A4')
                     pdf.add_page()
                     pdf.set_font("Arial", size=10)
                     
-                    # Cabeçalho Principal do PDF
+                    # Cabeçalho do PDF
                     pdf.set_fill_color(30, 58, 138)
                     pdf.rect(10, 10, 277, 15, "F")
                     pdf.set_text_color(255, 255, 255)
@@ -1185,12 +1203,12 @@ else:
                     pdf.line(10, 35, 287, 35)
                     
                     pdf.set_xy(10, 38)
-                    pdf.set_font("Arial", style="B", size=11)
-                    pdf.cell(277, 8, f"LOTE #{id_selecionado} - {tipo_animal_atual} | Data: {data_br} | Taxas aplicadas: Cartao {tx_cartao}% | Impostos {tx_impostos}% | Embalagens {tx_embalagens}% | Comissao {tx_comissao}%", ln=1)
+                    pdf.set_font("Arial", style="B", size=10)
+                    pdf.cell(277, 8, f"LOTE #{id_selecionado} - {tipo_animal_atual} | Data: {data_br} | Taxas: Cartao {tx_cartao}% | Impostos {tx_impostos}% | Embalagens {tx_embalagens}% | Comissao {tx_comissao}%", ln=1)
                     pdf.ln(2)
                     
-                    # Tabela Detalhada com os novos Custos Variáveis Inseridos Linha a Linha
-                    pdf.set_fill_color(234, 179, 8) # Amarelo Escuro corporativo
+                    # Tabela Detalhada Impressa no Relatório PDF contendo o Quadro de Custos Variáveis requisitado
+                    pdf.set_fill_color(234, 179, 8)
                     pdf.set_font("Arial", style="B", size=8)
                     pdf.cell(35, 6, "Corte", border=1, fill=True)
                     pdf.cell(15, 6, "Qual.", border=1, align="C", fill=True)
@@ -1221,7 +1239,6 @@ else:
                         pdf.cell(25, 5, f"R$ {r['Custo Efetivo/KG']:.2f}", border=1, align="C")
                         pdf.cell(26, 5, f"R$ {r['Custo Efetivo Total']:.2f}", border=1, align="C")
                         
-                        # Destaque em vermelho se houver prejuízo operacional na linha do PDF
                         if r["Margem Líquida (R$)"] <= 0:
                             pdf.set_fill_color(254, 226, 226)
                             pdf.cell(22, 5, f"R$ {r['Margem Líquida (R$)']:.2f}", border=1, align="C", fill=True)
@@ -1231,7 +1248,7 @@ else:
                         pdf.cell(14, 5, f"{r['Rendimento %']:.1f}%", border=1, align="C")
                         pdf.ln()
                         
-                    # Linha do Total Geral no PDF
+                    # Linha do Total Geral
                     pdf.set_font("Arial", style="B", size=8)
                     pdf.cell(35, 6, "TOTAL SOMA", border=1, fill=True)
                     pdf.cell(15, 6, "", border=1, fill=True)
