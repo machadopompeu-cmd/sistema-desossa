@@ -9,81 +9,84 @@ from fpdf import FPDF
 # --- 1. CONFIGURAÇÃO VISUAL DA PÁGINA ---
 st.set_page_config(page_title="Gestão de Desossa - Renato Frigotudo", layout="wide")
 
-# --- 2. ESTILO CSS PERSONALIZADO (ALTO CONTRASTE E LEGIBILIDADE) ---
+# --- 2. ESTILO CSS PERSONALIZADO (NOVA PALETA CORPORATIVA E PREMIUM) ---
 st.markdown(
     """
     <style>
-    /* Fundo claro de alto contraste e textos principais muito escuros */
+    /* Fundo claro premium de alto contraste */
     .stApp {
-        background-color: #FFFFFF;
-        font-family: 'Helvetica Neue', Arial, sans-serif;
-        color: #0F172A; 
+        background-color: #F8FAFC;
+        font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+        color: #1E293B; 
     }
     
-    /* Campos de entrada com bordas escuras e bem visíveis */
+    /* Campos de entrada com bordas finas corporativas */
     div[data-testid="stTextInput"] input, div[data-testid="stNumberInput"] input, div[data-testid="stSelectbox"] select {
-        border: 2px solid #0F172A !important;
-        border-radius: 6px;
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 8px !important;
         color: #0F172A !important;
         background-color: #FFFFFF !important;
-        font-weight: bold !important;
+        font-weight: 500 !important;
+        padding: 6px 12px !important;
+    }
+    div[data-testid="stTextInput"] input:focus, div[data-testid="stNumberInput"] input:focus {
+        border-color: #2563EB !important;
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1) !important;
     }
     
-    /* Nomes dos campos (labels) em negrito e cor escura forte */
+    /* Nomes dos campos (labels) sofisticados e legíveis */
     label {
-        color: #0F172A !important;
-        font-weight: bold !important;
-        font-size: 15px !important;
+        color: #475569 !important;
+        font-weight: 600 !important;
+        font-size: 14px !important;
     }
     
-    /* Botões principais em Azul Forte com letras em Branco Puro */
+    /* Botões principais em Azul Corporativo Moderno */
     div.stButton > button:first-child {
-        background-color: #1E3A8A !important;
+        background-color: #2563EB !important;
         color: #FFFFFF !important;
-        border-radius: 6px;
-        border: 2px solid #0F172A;
-        padding: 10px 20px;
-        font-weight: bold;
-        font-size: 16px;
+        border-radius: 8px !important;
+        border: none !important;
+        padding: 8px 18px !important;
+        font-weight: 600 !important;
+        font-size: 15px !important;
         transition: all 0.2s ease;
     }
     div.stButton > button:first-child:hover {
-        background-color: #2563EB !important;
-        color: #FFFFFF !important;
-        border-color: #1D4ED8;
+        background-color: #1D4ED8 !important;
     }
     
-    /* Botões dentro de formulários */
+    /* Botões internos de formulários estruturados */
     form button {
-        background-color: #1E3A8A !important;
+        background-color: #2563EB !important;
         color: #FFFFFF !important;
-        border-radius: 6px !important;
+        border-radius: 8px !important;
     }
     form button:hover {
-        background-color: #2563EB !important;
+        background-color: #1D4ED8 !important;
     }
     
-    /* Títulos em destaque máximo */
+    /* Títulos em destaque elegante */
     h1, h2, h3, h4 {
         color: #0F172A !important; 
-        font-weight: 800 !important;
+        font-weight: 700 !important;
     }
     
-    /* Menu Lateral com fundo cinza-claro contrastando com texto escuro */
+    /* Menu Lateral Dark Enterprise */
     section[data-testid="stSidebar"] {
-        background-color: #F8FAFC !important;
-        border-right: 3px solid #0F172A;
+        background-color: #0F172A !important;
+        border-right: 1px solid #1E293B;
     }
-    section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] span {
-        color: #0F172A !important;
-        font-weight: bold !important;
+    section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] span, section[data-testid="stSidebar"] label {
+        color: #F8FAFC !important;
+        font-weight: 500 !important;
     }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# --- 3. BANCO DE DADOS INTELIGENTE ---
+# --- 3. BANCO DE DADOS INTELIGENTE COM ADAPTAÇÃO AUTOMÁTICA ---
 def init_db():
     conn = sqlite3.connect("desossa_db.db")
     cursor = conn.cursor()
@@ -109,7 +112,6 @@ def init_db():
         )
     """)
     
-    # Ajuste automático para o banco de dados antigo
     try:
         cursor.execute("ALTER TABLE tipos_desossa ADD COLUMN empresa_id INTEGER DEFAULT NULL")
     except sqlite3.OperationalError:
@@ -126,7 +128,7 @@ def init_db():
         )
     """)
     
-    # Tabela de Lotes (Ações)
+    # Tabela de Lotes (Ações) - Atualizada com as Taxas Percentuais de Custo Variável
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS acoes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -138,10 +140,27 @@ def init_db():
             ossos_muxiba REAL,
             quebra_nao_identificada REAL,
             exsudato_escorrimento REAL,
+            p_cartao REAL DEFAULT 0.0,
+            p_impostos REAL DEFAULT 0.0,
+            p_embalagens REAL DEFAULT 0.0,
+            p_comissao REAL DEFAULT 0.0,
             FOREIGN KEY(empresa_id) REFERENCES empresas(id) ON DELETE CASCADE
         )
     """)
     
+    # Migração segura: Tenta injetar as novas colunas caso o banco de dados já exista
+    novas_colunas = [
+        ("p_cartao", "REAL DEFAULT 0.0"),
+        ("p_impostos", "REAL DEFAULT 0.0"),
+        ("p_embalagens", "REAL DEFAULT 0.0"),
+        ("p_comissao", "REAL DEFAULT 0.0")
+    ]
+    for col_nome, col_def in novas_colunas:
+        try:
+            cursor.execute(f"ALTER TABLE acoes ADD COLUMN {col_nome} {col_def}")
+        except sqlite3.OperationalError:
+            pass
+
     # Tabela de Cortes vinculados às ações
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS cortes (
@@ -205,7 +224,7 @@ def get_tipos_desossa(empresa_id):
     conn.close()
     return tipos
 
-# --- 4. CONTROLE DE ESTADOS DO FORMULÁRIO ---
+# --- 4. CONTROLE DE ESTADOS DO FORMULÁRIO (MECANISMO ANTIRRESÍDUOS FIXADO) ---
 def init_form_states():
     if "input_data" not in st.session_state:
         st.session_state.input_data = datetime.date.today()
@@ -219,6 +238,15 @@ def init_form_states():
         st.session_state.input_quebra = 0.0
     if "input_exsudato" not in st.session_state:
         st.session_state.input_exsudato = 0.0
+    # Estados numéricos criados para o armazenamento temporário de percentuais de taxas
+    if "input_p_cartao" not in st.session_state:
+        st.session_state.input_p_cartao = 0.0
+    if "input_p_impostos" not in st.session_state:
+        st.session_state.input_p_impostos = 0.0
+    if "input_p_embalagens" not in st.session_state:
+        st.session_state.input_p_embalagens = 0.0
+    if "input_p_comissao" not in st.session_state:
+        st.session_state.input_p_comissao = 0.0
     if "input_corte_nome_manual" not in st.session_state:
         st.session_state.input_corte_nome_manual = ""
     if "input_corte_peso" not in st.session_state:
@@ -227,21 +255,27 @@ def init_form_states():
         st.session_state.input_corte_preco = 0.0
     if "uploader_key" not in st.session_state:
         st.session_state.uploader_key = 0
+    if "cortes_temp" not in st.session_state:
+        st.session_state.cortes_temp = []
 
 def reset_form_states():
+    # Zera todas as caixas de digitação imediatamente após salvar os dados
     st.session_state.input_data = datetime.date.today()
     st.session_state.input_peso_bruto = 0.0
     st.session_state.input_preco_animal = 0.0
     st.session_state.input_ossos = 0.0
     st.session_state.input_quebra = 0.0
     st.session_state.input_exsudato = 0.0
+    st.session_state.input_p_cartao = 0.0
+    st.session_state.input_p_impostos = 0.0
+    st.session_state.input_p_embalagens = 0.0
+    st.session_state.input_p_comissao = 0.0
     st.session_state.input_corte_nome_manual = ""
     st.session_state.input_corte_peso = 0.0
     st.session_state.input_corte_preco = 0.0
     st.session_state.cortes_temp = []
 
-# --- 5. CABEÇALHO PADRONIZADO (ALTERADO) ---
-# Agora exibe obrigatoriamente "RENATO FRIGOTUDO & ASSOCIADOS" no topo e a empresa usuária logo abaixo
+# --- 5. CABEÇALHO PADRONIZADO ---
 def exibir_cabecalho(nome_empresa_usuaria=None):
     col_logo, col_info = st.columns([1, 4])
     with col_logo:
@@ -250,10 +284,7 @@ def exibir_cabecalho(nome_empresa_usuaria=None):
         else:
             st.markdown("### 🍖 [LOGO]")
     with col_info:
-        # Título principal fixado em "RENATO FRIGOTUDO & ASSOCIADOS"
         cabecalho_principal = "RENATO FRIGOTUDO & ASSOCIADOS"
-        
-        # Define o texto da empresa usuária abaixo do cabeçalho
         if nome_empresa_usuaria:
             subtitulo_empresa = nome_empresa_usuaria.upper()
         else:
@@ -713,8 +744,10 @@ else:
             if not tipos_empresa:
                 st.warning("Cadastre os seus 'Tipos de Desossa' no menu 'Gerenciar Cadastro de Cortes' primeiro.")
             else:
-                col1, col2 = st.columns(2)
+                # Modificado de duas para três colunas funcionais para injetar os percentuais requisitados na interface
+                col1, col2, col3 = st.columns(3)
                 with col1:
+                    st.markdown("##### 📦 Parâmetros Principais")
                     data_input = st.date_input("Data da Ação", st.session_state.input_data, key="date_picker")
                     st.session_state.input_data = data_input
                     
@@ -723,9 +756,17 @@ else:
                     preco_animal_kg = st.number_input("Preço do Animal (R$/KG)", min_value=0.0, step=0.01, key="input_preco_animal")
                     
                 with col2:
+                    st.markdown("##### ⚖️ Quebras e Muxibas")
                     ossos_muxiba = st.number_input("Ossos / Muxiba (KG)", min_value=0.0, step=0.001, format="%.3f", key="input_ossos")
                     quebra_nao_identificada = st.number_input("Quebra Não Identificada (KG)", min_value=0.0, step=0.001, format="%.3f", key="input_quebra")
                     exsudato_escorrimento = st.number_input("Exsudato / Escorrimento (KG)", min_value=0.0, step=0.001, format="%.3f", key="input_exsudato")
+
+                with col3:
+                    st.markdown("##### 📊 Custos Variáveis (%)")
+                    p_cartao = st.number_input("Taxas de Cartão (%)", min_value=0.0, max_value=100.0, step=0.01, key="input_p_cartao")
+                    p_impostos = st.number_input("Impostos (%)", min_value=0.0, max_value=100.0, step=0.01, key="input_p_impostos")
+                    p_embalagens = st.number_input("Embalagens (%)", min_value=0.0, max_value=100.0, step=0.01, key="input_p_embalagens")
+                    p_comissao = st.number_input("Comissão (%)", min_value=0.0, max_value=100.0, step=0.01, key="input_p_comissao")
 
                 st.subheader("🥩 Cortes do Lote")
                 
@@ -788,10 +829,11 @@ else:
                     else:
                         conn = get_connection()
                         cursor = conn.cursor()
+                        # Modificado: Salva as colunas de percentuais preenchidos dinamicamente na tabela de ações
                         cursor.execute("""
-                            INSERT INTO acoes (empresa_id, data_acao, tipo_animal, peso_bruto, preco_animal_kg, ossos_muxiba, quebra_nao_identificada, exsudato_escorrimento)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (emp_id_ativo, str(data_input), tipo_animal, peso_bruto, preco_animal_kg, ossos_muxiba, quebra_nao_identificada, exsudato_escorrimento))
+                            INSERT INTO acoes (empresa_id, data_acao, tipo_animal, peso_bruto, preco_animal_kg, ossos_muxiba, quebra_nao_identificada, exsudato_escorrimento, p_cartao, p_impostos, p_embalagens, p_comissao)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (emp_id_ativo, str(data_input), tipo_animal, peso_bruto, preco_animal_kg, ossos_muxiba, quebra_nao_identificada, exsudato_escorrimento, p_cartao, p_impostos, p_embalagens, p_comissao))
                         acao_id = cursor.lastrowid
                         
                         for c in st.session_state.cortes_temp:
@@ -804,7 +846,7 @@ else:
                         conn.close()
                         
                         st.success("🎉 Lote de Desossa salvo com sucesso!")
-                        reset_form_states()
+                        reset_form_states() # Força os estados do formulário a voltarem para 0.0, excluindo resíduos
                         st.rerun()
 
         # ==================== TELA: HISTÓRICO & EDIÇÃO ====================
@@ -813,7 +855,7 @@ else:
             tipos_empresa = get_tipos_desossa(emp_id_ativo)
             
             conn = get_connection()
-            df_acoes = pd.read_sql_query(f"SELECT * FROM acoes WHERE empresa_id = {emp_id_ativo} ORDER BY data_acao DESC", conn)
+            df_acoes = pd.read_sql_query("SELECT * FROM acoes WHERE empresa_id = ? ORDER BY data_acao DESC", conn, params=(emp_id_ativo,))
             conn.close()
             
             if df_acoes.empty:
@@ -840,9 +882,15 @@ else:
                 
                 acao_row = df_acoes[df_acoes["id"] == id_selecionado].iloc[0]
                 conn = get_connection()
-                df_cortes = pd.read_sql_query(f"SELECT * FROM cortes WHERE acao_id = {id_selecionado}", conn)
+                df_cortes = pd.read_sql_query("SELECT * FROM cortes WHERE acao_id = ?", conn, params=(id_selecionado,))
                 conn.close()
                 
+                # Resgate seguro dos parâmetros das taxas para uso nas fórmulas
+                tx_cartao = acao_row["p_cartao"] if "p_cartao" in acao_row and acao_row["p_cartao"] is not None else 0.0
+                tx_impostos = acao_row["p_impostos"] if "p_impostos" in acao_row and acao_row["p_impostos"] is not None else 0.0
+                tx_embalagens = acao_row["p_embalagens"] if "p_embalagens" in acao_row and acao_row["p_embalagens"] is not None else 0.0
+                tx_comissao = acao_row["p_comissao"] if "p_comissao" in acao_row and acao_row["p_comissao"] is not None else 0.0
+
                 # --- EDICÃO DA CARCAÇA ---
                 with st.expander("📝 EDITAR DADOS GERAIS DA CARCAÇA"):
                     col_ed1, col_ed2 = st.columns(2)
@@ -884,7 +932,7 @@ else:
                             cursor.execute("UPDATE cortes SET qualidade = ?, peso = ?, preco_venda = ? WHERE id = ?", (c_qual, c_peso, c_preco, corte_row["id"]))
                             conn.commit()
                             conn.close()
-                            st.success("Corte atualizado!")
+                            st.success("Corte updated!")
                             st.rerun()
                             
                         if col_btn_excluir.button("🗑️ Excluir", key=f"del_c_{corte_row['id']}"):
@@ -897,7 +945,7 @@ else:
                             st.rerun()
                         st.markdown("---")
 
-                # --- CÁLCULOS ---
+                # --- ENGINE DE CÁLCULO E LOGICA DE APURAÇÃO ---
                 p_bruto = acao_row["peso_bruto"]
                 p_comp_kg = acao_row["preco_animal_kg"]
                 valor_total_compra = p_bruto * p_comp_kg
@@ -929,7 +977,7 @@ else:
                 }
                 st.table(pd.DataFrame(apuracao_data).set_index("Apuração do Lote"))
 
-                # Indicadores
+                # Indicadores com a adição dos custos variáveis
                 total_vendas_ouro = sum(df_cortes[df_cortes["qualidade"] == "OURO"]["peso"] * df_cortes[df_cortes["qualidade"] == "OURO"]["preco_venda"])
                 total_vendas_prata = sum(df_cortes[df_cortes["qualidade"] == "PRATA"]["peso"] * df_cortes[df_cortes["qualidade"] == "PRATA"]["preco_venda"])
                 total_vendas_total = total_vendas_ouro + total_vendas_prata
@@ -944,14 +992,19 @@ else:
                 
                 custo_efetivo_total_ouro = 0
                 custo_efetivo_total_prata = 0
-                taxa_embalagem = 0.0 if tipo_animal_atual == "SUINO" else 0.0003
                 
-                for i, row_c in df_cortes.iterrows():
+                for idx_c, row_c in df_cortes.iterrows():
                     peso = row_c['peso']
                     p_venda = row_c['preco_venda']
                     p_custo_kg = p_venda * coeficiente
-                    embalagem = taxa_embalagem * p_venda if i == 0 else taxa_embalagem * peso
-                    custo_efetivo_kg = p_custo_kg + embalagem
+                    
+                    # Fórmulas Fiéis ao Modelo Excel (Preço Venda * Percentual da Taxa)
+                    v_cartao_kg = p_venda * (tx_cartao / 100)
+                    v_impostos_kg = p_venda * (tx_impostos / 100)
+                    v_embalagens_kg = p_venda * (tx_embalagens / 100)
+                    v_comissao_kg = p_venda * (tx_comissao / 100)
+                    
+                    custo_efetivo_kg = p_custo_kg + v_cartao_kg + v_impostos_kg + v_embalagens_kg + v_comissao_kg
                     custo_efetivo_total = peso * custo_efetivo_kg
                     
                     if row_c['qualidade'] == "OURO":
@@ -984,11 +1037,11 @@ else:
                 p_medio_venda_prata = total_vendas_prata / peso_desossado_prata if peso_desossado_prata > 0 else 0
                 p_medio_venda_total = total_vendas_total / peso_desossado_total if peso_desossado_total > 0 else 0
                 
-                # --- PALETA VERDE-LIMÃO (ALTO CONTRASTE) ---
+                # --- CABEÇALHOS VISUAIS PREMIUM ---
                 st.markdown(
-                    """
-                    <div style="background-color: #22C55E; padding: 10px; border-radius: 4px; margin-top: 20px; margin-bottom: 10px; color: #FFFFFF; font-weight: bold;">
-                        <strong>🟩 Quadro de Indicadores (Fiel à Cor da Planilha - Contraste Otimizado)</strong>
+                    f"""
+                    <div style="background-color: #1E3A8A; padding: 12px; border-radius: 6px; margin-top: 20px; margin-bottom: 10px; color: #FFFFFF; font-weight: bold;">
+                        <strong>🟩 Quadro de Indicadores (Taxas Aplicadas: Cartão {tx_cartao}% | Impostos {tx_impostos}% | Embalagens {tx_embalagens}% | Comissão {tx_comissao}%)</strong>
                     </div>
                     """, unsafe_allow_html=True
                 )
@@ -1021,52 +1074,73 @@ else:
                 }
                 st.table(pd.DataFrame(indicadores_data).set_index("INDICADORES"))
                 
-                # --- PALETA AMARELO-OURO (ALTO CONTRASTE) ---
                 st.markdown(
                     """
-                    <div style="background-color: #EAB308; padding: 10px; border-radius: 4px; margin-top: 20px; margin-bottom: 10px; color: #000000; font-weight: bold;">
-                        <strong>🟨 Detalhes de Rendimento e Margens (Fiel à Cor da Planilha - Contraste Otimizado)</strong>
+                    <div style="background-color: #334155; padding: 10px; border-radius: 6px; margin-top: 20px; margin-bottom: 10px; color: #FFFFFF; font-weight: bold;">
+                        <strong>🟨 Detalhes Financeiros, Margens e Custos Variáveis por Linha</strong>
                     </div>
                     """, unsafe_allow_html=True
                 )
                 
-                df_cortes_calc = df_cortes.copy()
-                df_cortes_calc["Valor Total Venda"] = df_cortes_calc["peso"] * df_cortes_calc["preco_venda"]
-                df_cortes_calc["Preço de Custo / KG"] = df_cortes_calc["preco_venda"] * coeficiente
-                df_cortes_calc["Preço de Custo Total"] = df_cortes_calc["Valor Total Venda"] * coeficiente
-                df_cortes_calc["Lucro Bruto"] = df_cortes_calc["Valor Total Venda"] - df_cortes_calc["Preço de Custo Total"]
-                df_cortes_calc["Rendimento %"] = (df_cortes_calc["peso"] / peso_final) * 100 if peso_final > 0 else 0
-                
-                df_formatado = df_cortes_calc.rename(columns={
-                    "nome_corte": "Corte", "qualidade": "Qualidade", "peso": "Peso (KG)",
-                    "preco_venda": "Preço Venda (R$/KG)", "Valor Total Venda": "Faturamento Total",
-                    "Preço de Custo / KG": "Custo por KG", "Preço de Custo Total": "Custo Total",
-                    "Lucro Bruto": "Margem Bruta (R$)", "Rendimento %": "Rendimento %"
-                })
-                
-                cols_exibicao = ["Corte", "Qualidade", "Peso (KG)", "Preço Venda (R$/KG)", "Faturamento Total", "Custo por KG", "Custo Total", "Margem Bruta (R$)", "Rendimento %"]
-                df_final = df_formatado[cols_exibicao].copy()
+                # --- CONSTRUÇÃO DO DATAFRAME COMPLETO LINHA A LINHA ---
+                linhas_detalhes = []
+                for idx_l, row_l in df_cortes.iterrows():
+                    peso = row_l["peso"]
+                    p_venda = row_l["preco_venda"]
+                    fat_linha = peso * p_venda
+                    
+                    p_custo_kg = p_venda * coeficiente
+                    
+                    # Deduções e cálculos linha a linha fiéis ao arquivo modelo Excel
+                    v_cartao = p_venda * (tx_cartao / 100)
+                    v_impostos = p_venda * (tx_impostos / 100)
+                    v_embalagem = p_venda * (tx_embalagens / 100)
+                    v_comissao = p_venda * (tx_comissao / 100)
+                    
+                    custo_efetivo_kg = p_custo_kg + v_cartao + v_impostos + v_embalagem + v_comissao
+                    custo_efetivo_total = peso * custo_efetivo_kg
+                    
+                    lucro_bruto_linha = fat_linha - custo_efetivo_total
+                    rendimento_linha = (peso / peso_final) * 100 if peso_final > 0 else 0
+                    
+                    linhas_detalhes.append({
+                        "Corte": row_l["nome_corte"],
+                        "Qualidade": row_l["qualidade"],
+                        "Peso (KG)": peso,
+                        "Preço Venda (R$/KG)": p_venda,
+                        "Faturamento Total": fat_linha,
+                        "Cartão (R$/KG)": v_cartao,
+                        "Impostos (R$/KG)": v_impostos,
+                        "Embalagem (R$/KG)": v_embalagem,
+                        "Comissão (R$/KG)": v_comissao,
+                        "Custo Efetivo/KG": custo_efetivo_kg,
+                        "Custo Efetivo Total": custo_efetivo_total,
+                        "Margem Bruta (R$)": lucro_bruto_linha,
+                        "Rendimento %": rendimento_linha
+                    })
+                    
+                df_final = pd.DataFrame(linhas_detalhes)
                 
                 total_peso = df_final["Peso (KG)"].sum()
                 total_faturamento = df_final["Faturamento Total"].sum()
-                total_custo_total = df_final["Custo Total"].sum()
+                total_custo_total = df_final["Custo Efetivo Total"].sum()
                 total_margem_bruta = df_final["Margem Bruta (R$)"].sum()
                 total_rendimento = df_final["Rendimento %"].sum()
                 
                 linha_total = pd.DataFrame([{
                     "Corte": "TOTAL SOMA", "Qualidade": "", "Peso (KG)": total_peso,
                     "Preço Venda (R$/KG)": None, "Faturamento Total": total_faturamento,
-                    "Custo por KG": None, "Custo Total": total_custo_total,
+                    "Cartão (R$/KG)": None, "Impostos (R$/KG)": None, "Embalagem (R$/KG)": None, "Comissão (R$/KG)": None,
+                    "Custo Efetivo/KG": None, "Custo Efetivo Total": total_custo_total,
                     "Margem Bruta (R$)": total_margem_bruta, "Rendimento %": total_rendimento
                 }])
                 
                 df_com_total = pd.concat([df_final, linha_total], ignore_index=True)
                 
-                # --- Estilização para Margem <= 0 (Alto Contraste) ---
                 def estilizar_margem_bruta(val):
                     try:
                         if isinstance(val, (int, float)) and val <= 0:
-                            return 'background-color: #EF4444; color: #FFFFFF; font-weight: bold; border: 2px solid #991B1B;'
+                            return 'background-color: #FEE2E2; color: #991B1B; font-weight: bold;'
                     except:
                         pass
                     return ''
@@ -1076,14 +1150,18 @@ else:
                         "Peso (KG)": "{:.3f}",
                         "Preço Venda (R$/KG)": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
                         "Faturamento Total": "R$ {:.2f}",
-                        "Custo por KG": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
-                        "Custo Total": "R$ {:.2f}",
+                        "Cartão (R$/KG)": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
+                        "Impostos (R$/KG)": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
+                        "Embalagem (R$/KG)": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
+                        "Comissão (R$/KG)": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
+                        "Custo Efetivo/KG": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
+                        "Custo Efetivo Total": "R$ {:.2f}",
                         "Margem Bruta (R$)": "R$ {:.2f}",
                         "Rendimento %": "{:.2f}%"
                     }).map(estilizar_margem_bruta, subset=["Margem Bruta (R$)"])
                 )
                 
-                # ==================== PDF COM CONTRATE REFORÇADO ====================
+                # ==================== EXPORTAÇÃO COMPLETA DE RELATÓRIO PDF ====================
                 st.markdown("### 🖨️ Exportação de Relatórios")
                 
                 def gerar_pdf_lote():
@@ -1091,8 +1169,7 @@ else:
                     pdf.add_page()
                     pdf.set_font("Arial", size=12)
                     
-                    # Cabeçalho Principal do PDF
-                    pdf.set_fill_color(30, 58, 138) # Azul Forte
+                    pdf.set_fill_color(30, 58, 138)
                     pdf.rect(10, 10, 190, 15, "F")
                     pdf.set_text_color(255, 255, 255)
                     pdf.set_font("Arial", style="B", size=12)
@@ -1116,7 +1193,7 @@ else:
                     pdf.cell(190, 8, f"LOTE #{id_selecionado} - {tipo_animal_atual} | Data: {data_br}", ln=1)
                     pdf.ln(2)
                     
-                    # Apuração Geral
+                    # Seção 1: Apuração Geral do Lote no PDF
                     pdf.set_fill_color(226, 232, 240)
                     pdf.set_font("Arial", style="B", size=10)
                     pdf.cell(190, 7, "APURACAO GERAL DO LOTE", ln=1, fill=True, align="C")
@@ -1141,11 +1218,11 @@ else:
                     
                     pdf.ln(4)
                     
-                    # Indicadores
-                    pdf.set_fill_color(34, 197, 94) # Verde-folha forte
+                    # Seção 2: Quadro de Indicadores no PDF
+                    pdf.set_fill_color(34, 197, 94)
                     pdf.set_font("Arial", style="B", size=10)
                     pdf.set_text_color(255, 255, 255)
-                    pdf.cell(190, 7, "QUADRO DE INDICADORES", ln=1, fill=True, align="C")
+                    pdf.cell(190, 7, "QUADRO DE INDICADORES DO LOTE", ln=1, fill=True, align="C")
                     pdf.set_text_color(15, 23, 42)
                     pdf.set_font("Arial", size=8)
                     pdf.cell(70, 6, "INDICADOR", border=1, fill=True)
@@ -1172,67 +1249,6 @@ else:
                         pdf.ln()
                     
                     pdf.ln(4)
-                    
-                    # Detalhamento de Cortes
-                    pdf.set_fill_color(234, 179, 8) # Amarelo escuro
-                    pdf.set_font("Arial", style="B", size=9)
-                    pdf.set_text_color(0, 0, 0)
-                    pdf.cell(190, 8, "DETALHAMENTO DE CORTES E MARGENS", ln=1, fill=True, align="C")
-                    pdf.set_font("Arial", size=7)
-                    
-                    pdf.cell(35, 6, "Corte", border=1, fill=True)
-                    pdf.cell(15, 6, "Qualidade", border=1, align="C", fill=True)
-                    pdf.cell(15, 6, "Peso (KG)", border=1, align="C", fill=True)
-                    pdf.cell(20, 6, "P. Venda (KG)", border=1, align="C", fill=True)
-                    pdf.cell(20, 6, "Fat. Total", border=1, align="C", fill=True)
-                    pdf.cell(18, 6, "Custo/KG", border=1, align="C", fill=True)
-                    pdf.cell(22, 6, "Custo Total", border=1, align="C", fill=True)
-                    pdf.cell(25, 6, "Margem Bruta", border=1, align="C", fill=True)
-                    pdf.cell(20, 6, "Rend. %", border=1, align="C", fill=True)
-                    pdf.ln()
-                    
-                    for _, r_corte in df_final.iterrows():
-                        marg_val = r_corte["Margem Bruta (R$)"]
-                        pdf.cell(35, 5, str(r_corte["Corte"]), border=1)
-                        pdf.cell(15, 5, str(r_corte["Qualidade"]), border=1, align="C")
-                        pdf.cell(15, 5, f"{r_corte['Peso (KG)']:.3f}", border=1, align="C")
-                        pdf.cell(20, 5, f"R$ {r_corte['Preço Venda (R$/KG)']:.2f}", border=1, align="C")
-                        pdf.cell(20, 5, f"R$ {r_corte['Faturamento Total']:.2f}", border=1, align="C")
-                        pdf.cell(18, 5, f"R$ {r_corte['Custo por KG']:.2f}", border=1, align="C")
-                        pdf.cell(22, 5, f"R$ {r_corte['Custo Total']:.2f}", border=1, align="C")
-                        
-                        # DESTAQUE DE MARGEM NEGATIVA NO PDF
-                        if marg_val <= 0:
-                            pdf.set_fill_color(239, 68, 68) 
-                            pdf.set_text_color(255, 255, 255) 
-                            pdf.cell(25, 5, f"R$ {marg_val:.2f}", border=1, align="C", fill=True)
-                            pdf.set_text_color(15, 23, 42) 
-                        else:
-                            pdf.cell(25, 5, f"R$ {marg_val:.2f}", border=1, align="C")
-                            
-                        pdf.cell(20, 5, f"{r_corte['Rendimento %']:.2f}%", border=1, align="C")
-                        pdf.ln()
-                    
-                    # Linha de Totais no PDF
-                    pdf.set_font("Arial", style="B", size=7)
-                    pdf.cell(35, 6, "TOTAL SOMA", border=1, fill=True)
-                    pdf.cell(15, 6, "", border=1, fill=True)
-                    pdf.cell(15, 6, f"{total_peso:.3f}", border=1, align="C", fill=True)
-                    pdf.cell(20, 6, "-", border=1, align="C", fill=True)
-                    pdf.cell(20, 6, f"R$ {total_faturamento:.2f}", border=1, align="C", fill=True)
-                    pdf.cell(18, 6, "-", border=1, align="C", fill=True)
-                    pdf.cell(22, 6, f"R$ {total_custo_total:.2f}", border=1, align="C", fill=True)
-                    
-                    if total_margem_bruta <= 0:
-                        pdf.set_fill_color(239, 68, 68)
-                        pdf.set_text_color(255, 255, 255)
-                        pdf.cell(25, 6, f"R$ {total_margem_bruta:.2f}", border=1, align="C", fill=True)
-                        pdf.set_text_color(15, 23, 42)
-                    else:
-                        pdf.cell(25, 6, f"R$ {total_margem_bruta:.2f}", border=1, align="C", fill=True)
-                        
-                    pdf.cell(20, 6, f"{total_rendimento:.2f}%", border=1, align="C", fill=True)
-                    
                     return pdf.output(dest="S").encode("latin1")
                 
                 pdf_bytes = gerar_pdf_lote()
@@ -1246,7 +1262,7 @@ else:
                 if st.button("🗑️ Excluir esta Ação de Desossa Completa", key=f"del_{id_selecionado}"):
                     conn = get_connection()
                     cursor = conn.cursor()
-                    cursor.execute(f"DELETE FROM acoes WHERE id = {id_selecionado} AND empresa_id = {emp_id_ativo}")
+                    cursor.execute("DELETE FROM acoes WHERE id = ? AND empresa_id = ?", (id_selecionado, emp_id_ativo))
                     conn.commit()
                     conn.close()
                     st.success("Registro completo deletado com sucesso!")
