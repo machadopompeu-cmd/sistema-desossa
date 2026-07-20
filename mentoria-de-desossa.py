@@ -127,6 +127,16 @@ st.markdown(
         color: #FFFFFF !important;
         font-weight: 600 !important;
     }
+
+    /* CORREÇÃO VISUAL: Torna o texto e o ícone do botão de upload visíveis */
+    section[data-testid="stSidebar"] section[data-testid="stFileUploaderDropzone"] button,
+    section[data-testid="stSidebar"] section[data-testid="stFileUploaderDropzone"] button *,
+    section[data-testid="stSidebar"] section[data-testid="stFileUploaderDropzone"] a,
+    section[data-testid="stSidebar"] section[data-testid="stFileUploaderDropzone"] a * {
+        color: #0F172A !important;
+        fill: #0F172A !important;
+        font-weight: 700 !important;
+    }
     </style>
     """,
     unsafe_allow_html=True
