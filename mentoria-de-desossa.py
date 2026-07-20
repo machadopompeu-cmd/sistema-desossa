@@ -282,7 +282,7 @@ def reset_form_states():
     st.session_state.cortes_temp = []
 
 # =========================================================================
-# 4. ELEMENTOS VISUAIS DE CABEÇALHO DA APLICAÇÃO
+# 4. ELEMENTOS VISUAIS DE CABEÇALHO DA APLICAÇÃO (ENDEREÇO REMOVIDO)
 # =========================================================================
 def exibir_cabecalho(nome_empresa_usuaria=None):
     col_logo, col_info = st.columns([1, 4])
@@ -304,14 +304,11 @@ def exibir_cabecalho(nome_empresa_usuaria=None):
                 <h3 style="margin: 4px 0 0 0; color: #0F172A; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 18px; font-weight: 700;">
                     🏢 Empresa Usuária: {subtitulo_empresa}
                 </h3>
-                <p style="margin: 2px 0 0 0; color: #64748B; font-size: 13px; font-weight: 500;">
-                    Rua Paraíso, nº 514 • Pompéu/MG
-                </p>
             </div>
             """, 
             unsafe_allow_html=True
         )
-    st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px; border-top: 3px solid #1E3A8A;'>", unsafe_allow_html=True)
+    st.markdown("<hr style='margin-top: 10px; margin-bottom: 20px; border-top: 3px solid #1E3A8A;'>", unsafe_allow_html=True)
 
 # =========================================================================
 # 5. GERENCIAMENTO DE SESSÃO E LOGIN
@@ -648,8 +645,8 @@ else:
                                     cursor.execute("UPDATE tipos_desossa SET nome = ? WHERE nome = ? AND empresa_id IS NULL", (novo_nome_fmt, tipo_gerenciar_sel))
                                     cursor.execute("UPDATE cortes_padrao SET tipo_desossa = ? WHERE tipo_desossa = ? AND empresa_id IS NULL", (novo_nome_fmt, tipo_gerenciar_sel))
                                 else:
-                                    cursor.execute("UPDATE tipos_desossa SET nome = ? WHERE nome = ? AND empresa_id = ?", (novo_nome_fmt, tipo_gerenciar_sel, emp_id_ativo))
-                                    cursor.execute("UPDATE cortes_padrao SET tipo_desossa = ? WHERE tipo_desossa = ? AND empresa_id = ?", (novo_nome_fmt, tipo_gerenciar_sel, emp_id_ativo))
+                                    cursor.execute("UPDATE tipos_desossa SET nome = ? WHERE nome = ? AND empresa_id = ?", (novo_nome_fmt, tipo_gerenciar_sel))
+                                    cursor.execute("UPDATE cortes_padrao SET tipo_desossa = ? WHERE tipo_desossa = ? AND empresa_id = ?", (novo_nome_fmt, tipo_gerenciar_sel))
                                 conn.commit()
                                 conn.close()
                                 st.rerun()
@@ -1201,7 +1198,7 @@ else:
                     })
                 )
                 
-                # --- EXPORTAÇÃO DO RELATÓRIO PDF COM O QUADRO APURAÇÃO GERAL DO LOTE ---
+                # --- EXPORTAÇÃO DO RELATÓRIO PDF (SEM ENDEREÇO) ---
                 st.markdown("### 🖨️ Exportação de Relatórios em PDF")
                 
                 def gerar_pdf_lote():
@@ -1224,14 +1221,12 @@ else:
                     nome_emp_pdf = f"Empresa Usuaria: {st.session_state.empresa_nome.upper()}".encode("latin1", "replace").decode("latin1")
                     pdf.cell(277, 6, nome_emp_pdf, ln=1, align="C")
                     
-                    pdf.set_font("Arial", size=8)
-                    pdf.cell(277, 5, "Rua Paraiso, n. 514 - Pompeu/MG", ln=1, align="C")
-                    
+                    # Linha Divisória Reajustada
                     pdf.set_draw_color(30, 58, 138)
                     pdf.set_line_width(0.8)
-                    pdf.line(10, 38, 287, 38)
+                    pdf.line(10, 34, 287, 34)
                     
-                    pdf.set_xy(10, 41)
+                    pdf.set_xy(10, 37)
                     pdf.set_font("Arial", style="B", size=9)
                     pdf.cell(277, 6, f"LOTE #{id_selecionado} - {tipo_animal_atual} | Data: {data_br} | Taxas: Cartao {tx_cartao}% | Impostos {tx_impostos}% | Embalagens {tx_embalagens}% | Comissao {tx_comissao}%", ln=1)
                     pdf.ln(2)
