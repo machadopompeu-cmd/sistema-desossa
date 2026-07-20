@@ -452,7 +452,6 @@ else:
                                 uploaded_csv.seek(0)
                                 df_imported = pd.read_csv(uploaded_csv, encoding="latin-1", sep=None, engine="python")
                             
-                            # Ajuste de nome da coluna se tiver typo (nom_corte -> nome_corte)
                             if "nom_corte" in df_imported.columns:
                                 df_imported.rename(columns={"nom_corte": "nome_corte"}, inplace=True)
                             
@@ -759,11 +758,9 @@ else:
                                     file_cortes.seek(0)
                                     df_uploaded_cortes = pd.read_csv(file_cortes, encoding="latin-1", sep=None, engine="python")
                             
-                            # Normaliza os nomes das colunas
                             col_map = {col: col.strip().lower().replace(" ", "_") for col in df_uploaded_cortes.columns}
                             df_uploaded_cortes.rename(columns=col_map, inplace=True)
                             
-                            # Ajusta variações comuns de nom_corte
                             if "nom_corte" in df_uploaded_cortes.columns and "nome_corte" not in df_uploaded_cortes.columns:
                                 df_uploaded_cortes.rename(columns={"nom_corte": "nome_corte"}, inplace=True)
                             
@@ -780,11 +777,9 @@ else:
                                         n_corte = str(r_corte["nome_corte"]).strip().upper()
                                         q_corte = str(r_corte["qualidade"]).strip().upper()
                                         
-                                        # Limpeza e conversão do valor de Peso
                                         peso_raw = str(r_corte["peso"]).replace(",", ".").strip()
                                         p_corte = float(peso_raw) if peso_raw != "" else 0.0
                                         
-                                        # Limpeza e conversão do Valor de Venda (remove R$, espaços e ajusta vírgula)
                                         preco_raw = str(r_corte[preco_col]).upper().replace("R$", "").replace(",", ".").strip()
                                         pv_corte = float(preco_raw) if preco_raw != "" else 0.0
                                         
@@ -1177,7 +1172,7 @@ else:
                     })
                 )
                 
-                # --- EXPORTAÇÃO DO RELATÓRIO PDF ---
+                # --- EXPORTAÇÃO DO RELATÓRIO PDF COM O QUADRO APURAÇÃO GERAL DO LOTE ---
                 st.markdown("### 🖨️ Exportação de Relatórios em PDF")
                 
                 def gerar_pdf_lote():
@@ -1185,6 +1180,7 @@ else:
                     pdf.add_page()
                     pdf.set_font("Arial", size=10)
                     
+                    # 1. Cabeçalho Principal (RENATO FRIGOTUDO & ASSOCIADOS)
                     pdf.set_fill_color(30, 58, 138)
                     pdf.rect(10, 10, 277, 14, "F")
                     pdf.set_text_color(255, 255, 255)
@@ -1192,6 +1188,7 @@ else:
                     pdf.set_xy(10, 13)
                     pdf.cell(277, 8, "RENATO FRIGOTUDO & ASSOCIADOS", ln=1, align="C")
                     
+                    # 2. Nome da Empresa Usuária
                     pdf.set_text_color(15, 23, 42)
                     pdf.set_font("Arial", style="B", size=10)
                     pdf.set_xy(10, 26)
@@ -1209,8 +1206,44 @@ else:
                     pdf.set_font("Arial", style="B", size=9)
                     pdf.cell(277, 6, f"LOTE #{id_selecionado} - {tipo_animal_atual} | Data: {data_br} | Taxas: Cartao {tx_cartao}% | Impostos {tx_impostos}% | Embalagens {tx_embalagens}% | Comissao {tx_comissao}%", ln=1)
                     pdf.ln(2)
+
+                    # 3. TABELA APURAÇÃO GERAL DO LOTE (INCLUÍDA AQUI CONFORME SOLICITADO)
+                    pdf.set_fill_color(30, 58, 138)
+                    pdf.set_text_color(255, 255, 255)
+                    pdf.set_font("Arial", style="B", size=8)
+                    pdf.cell(277, 5, " APURACAO GERAL DO LOTE", border=1, ln=1, fill=True)
                     
+                    pdf.set_fill_color(241, 245, 249)
+                    pdf.set_text_color(15, 23, 42)
+                    pdf.set_font("Arial", style="B", size=7.5)
+                    pdf.cell(117, 4.5, "Apuracao do Lote", border=1, fill=True)
+                    pdf.cell(50, 4.5, "Peso (KG)", border=1, align="C", fill=True)
+                    pdf.cell(60, 4.5, "R$", border=1, align="C", fill=True)
+                    pdf.cell(50, 4.5, "Porcentagem", border=1, align="C", fill=True)
+                    pdf.ln()
+
+                    pdf.set_font("Arial", size=7)
+                    rows_apuracao_pdf = [
+                        ("PESO BRUTO/KG", f"{p_bruto:.3f}", f"R$ {valor_total_compra:.2f}", "100.00%"),
+                        ("OSSOS/MUXIBA", f"{ossos_val:.3f}", "-", f"{porc_ossos:.2f}%"),
+                        ("QUEBRA NAO IDENTIF", f"{quebra_val:.3f}", "-", f"{porc_quebra:.2f}%"),
+                        ("ESCORRIMENTO", f"{exsudato_val:.3f}", "-", f"{porc_exsudato:.2f}%"),
+                        ("Peso Final", f"{peso_final:.3f}", f"R$ {valor_total_compra:.2f}", f"{porc_final:.2f}%"),
+                        ("TOTAL DE QUEBRA", f"{total_quebra:.3f}", "-", f"{porc_total_quebra:.2f}%")
+                    ]
+
+                    for rotulo, p_kg, v_rs, pct_val in rows_apuracao_pdf:
+                        pdf.cell(117, 4.5, rotulo, border=1)
+                        pdf.cell(50, 4.5, p_kg, border=1, align="C")
+                        pdf.cell(60, 4.5, v_rs, border=1, align="C")
+                        pdf.cell(50, 4.5, pct_val, border=1, align="C")
+                        pdf.ln()
+
+                    pdf.ln(4) # Espaçamento pré-tabela de cortes
+                    
+                    # 4. Tabela de Cortes com as 15 Colunas
                     pdf.set_fill_color(234, 179, 8)
+                    pdf.set_text_color(15, 23, 42)
                     pdf.set_font("Arial", style="B", size=7)
                     
                     headers_excel = [
@@ -1259,8 +1292,9 @@ else:
                     pdf.cell(15, 6, "-", border=1, align="C", fill=True)
                     pdf.cell(20, 6, "-", border=1, align="C", fill=True)
                     pdf.cell(20, 6, f"R$ {total_custo_efetivo_total:.2f}", border=1, align="C", fill=True)
-                    pdf.ln(8)
+                    pdf.ln(6)
                     
+                    # 5. Quadro de Indicadores
                     pdf.set_fill_color(30, 58, 138)
                     pdf.set_text_color(255, 255, 255)
                     pdf.set_font("Arial", style="B", size=8)
