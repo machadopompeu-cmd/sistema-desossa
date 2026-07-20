@@ -42,11 +42,7 @@ st.markdown(
         font-size: 14px !important;
     }
     
-    /* =====================================================================
-       ESTILIZAÇÃO DE TODOS OS BOTÕES NA COR #A3A3A3
-       ===================================================================== */
-    
-    /* Botões das telas principais */
+    /* ESTILIZAÇÃO DE TODOS OS BOTÕES NA COR #A3A3A3 */
     div.stButton > button,
     div.stDownloadButton > button {
         background-color: #A3A3A3 !important;
@@ -114,7 +110,6 @@ st.markdown(
     section[data-testid="stSidebar"] div.stDownloadButton > button:hover {
         background-color: #8C8C8C !important;
         color: #0F172A !important;
-        border-color: #525252 !important;
     }
     
     /* Caixa de Dropzone/Upload no Menu Lateral */
@@ -128,7 +123,7 @@ st.markdown(
         font-weight: 600 !important;
     }
 
-    /* CORREÇÃO VISUAL: Torna o texto e o ícone do botão de upload visíveis */
+    /* CORREÇÃO VISUAL PARA O BOTÃO DE UPLOAD */
     section[data-testid="stSidebar"] section[data-testid="stFileUploaderDropzone"] button,
     section[data-testid="stSidebar"] section[data-testid="stFileUploaderDropzone"] button *,
     section[data-testid="stSidebar"] section[data-testid="stFileUploaderDropzone"] a,
@@ -272,7 +267,7 @@ def get_tipos_desossa(empresa_id):
     return tipos
 
 # =========================================================================
-# 3. CONTROLE DE ESTADOS DO FORMULÁRIO (ANTI-TRAVAMENTO)
+# 3. CONTROLE DE ESTADOS DO FORMULÁRIO
 # =========================================================================
 def init_form_states():
     if "form_version" not in st.session_state:
@@ -371,7 +366,7 @@ if not st.session_state.logado:
                     st.error("Usuário ou senha incorretos.")
 
 else:
-    # --- BARRA LATERAL (SIDEBAR COM BOTÕES COR #A3A3A3) ---
+    # --- BARRA LATERAL ---
     st.sidebar.markdown(f"**🏢 Empresa Usuária:**\n`{st.session_state.empresa_nome.upper()}`")
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 💾 Backup do Sistema")
@@ -416,7 +411,6 @@ else:
         st.sidebar.markdown("### 🥩 Menu de Operações")
         menu = st.sidebar.radio("Selecione a Tela:", ["Nova Desossa", "Histórico & Edição", "Gerenciar Cadastro de Cortes"])
 
-    # Exibe cabeçalho padrão com o nome da empresa usuária
     exibir_cabecalho(nome_empresa_usuaria=st.session_state.empresa_nome)
 
     # =========================================================================
@@ -453,10 +447,14 @@ else:
                     if uploaded_csv is not None:
                         try:
                             try:
-                                df_imported = pd.read_csv(uploaded_csv, encoding="utf-8")
-                            except UnicodeDecodeError:
+                                df_imported = pd.read_csv(uploaded_csv, encoding="utf-8", sep=None, engine="python")
+                            except Exception:
                                 uploaded_csv.seek(0)
-                                df_imported = pd.read_csv(uploaded_csv, encoding="latin-1")
+                                df_imported = pd.read_csv(uploaded_csv, encoding="latin-1", sep=None, engine="python")
+                            
+                            # Ajuste de nome da coluna se tiver typo (nom_corte -> nome_corte)
+                            if "nom_corte" in df_imported.columns:
+                                df_imported.rename(columns={"nom_corte": "nome_corte"}, inplace=True)
                             
                             if "nome_corte" not in df_imported.columns:
                                 st.error("❌ Erro: O arquivo CSV não possui a coluna 'nome_corte'.")
@@ -756,13 +754,18 @@ else:
                                 df_uploaded_cortes = pd.read_excel(file_cortes)
                             else:
                                 try:
-                                    df_uploaded_cortes = pd.read_csv(file_cortes, encoding="utf-8")
-                                except UnicodeDecodeError:
+                                    df_uploaded_cortes = pd.read_csv(file_cortes, encoding="utf-8", sep=None, engine="python")
+                                except Exception:
                                     file_cortes.seek(0)
-                                    df_uploaded_cortes = pd.read_csv(file_cortes, encoding="latin-1")
+                                    df_uploaded_cortes = pd.read_csv(file_cortes, encoding="latin-1", sep=None, engine="python")
                             
+                            # Normaliza os nomes das colunas
                             col_map = {col: col.strip().lower().replace(" ", "_") for col in df_uploaded_cortes.columns}
                             df_uploaded_cortes.rename(columns=col_map, inplace=True)
+                            
+                            # Ajusta variações comuns de nom_corte
+                            if "nom_corte" in df_uploaded_cortes.columns and "nome_corte" not in df_uploaded_cortes.columns:
+                                df_uploaded_cortes.rename(columns={"nom_corte": "nome_corte"}, inplace=True)
                             
                             preco_col = None
                             for p_c in ["preco_de_venda", "preço_de_venda", "preco_venda", "preço_venda"]:
@@ -776,8 +779,14 @@ else:
                                     for _, r_corte in df_uploaded_cortes.iterrows():
                                         n_corte = str(r_corte["nome_corte"]).strip().upper()
                                         q_corte = str(r_corte["qualidade"]).strip().upper()
-                                        p_corte = float(r_corte["peso"])
-                                        pv_corte = float(r_corte[preco_col])
+                                        
+                                        # Limpeza e conversão do valor de Peso
+                                        peso_raw = str(r_corte["peso"]).replace(",", ".").strip()
+                                        p_corte = float(peso_raw) if peso_raw != "" else 0.0
+                                        
+                                        # Limpeza e conversão do Valor de Venda (remove R$, espaços e ajusta vírgula)
+                                        preco_raw = str(r_corte[preco_col]).upper().replace("R$", "").replace(",", ".").strip()
+                                        pv_corte = float(preco_raw) if preco_raw != "" else 0.0
                                         
                                         if n_corte != "" and p_corte > 0:
                                             st.session_state.cortes_temp.append({
@@ -1085,7 +1094,6 @@ else:
                     """, unsafe_allow_html=True
                 )
                 
-                # --- AS 15 COLUNAS FIÉIS AO MODELO EXCEL ---
                 linhas_detalhes = []
                 for idx_l, row_l in df_cortes.iterrows():
                     peso = row_l["peso"]
@@ -1169,7 +1177,7 @@ else:
                     })
                 )
                 
-                # --- EXPORTAÇÃO DO RELATÓRIO PDF COM BOTÃO EM #A3A3A3 ---
+                # --- EXPORTAÇÃO DO RELATÓRIO PDF ---
                 st.markdown("### 🖨️ Exportação de Relatórios em PDF")
                 
                 def gerar_pdf_lote():
@@ -1177,7 +1185,6 @@ else:
                     pdf.add_page()
                     pdf.set_font("Arial", size=10)
                     
-                    # 1. Cabeçalho Principal (RENATO FRIGOTUDO & ASSOCIADOS)
                     pdf.set_fill_color(30, 58, 138)
                     pdf.rect(10, 10, 277, 14, "F")
                     pdf.set_text_color(255, 255, 255)
@@ -1185,7 +1192,6 @@ else:
                     pdf.set_xy(10, 13)
                     pdf.cell(277, 8, "RENATO FRIGOTUDO & ASSOCIADOS", ln=1, align="C")
                     
-                    # 2. Nome da Empresa Usuária Impresso Abaixo do Cabeçalho
                     pdf.set_text_color(15, 23, 42)
                     pdf.set_font("Arial", style="B", size=10)
                     pdf.set_xy(10, 26)
@@ -1204,7 +1210,6 @@ else:
                     pdf.cell(277, 6, f"LOTE #{id_selecionado} - {tipo_animal_atual} | Data: {data_br} | Taxas: Cartao {tx_cartao}% | Impostos {tx_impostos}% | Embalagens {tx_embalagens}% | Comissao {tx_comissao}%", ln=1)
                     pdf.ln(2)
                     
-                    # 3. Tabela de Cortes com as 15 Colunas
                     pdf.set_fill_color(234, 179, 8)
                     pdf.set_font("Arial", style="B", size=7)
                     
@@ -1238,7 +1243,6 @@ else:
                         pdf.cell(20, 5, f"R$ {r['CUSTO EFETIVO TOTAL']:.2f}", border=1, align="C")
                         pdf.ln()
                         
-                    # Linha de Total
                     pdf.set_font("Arial", style="B", size=7)
                     pdf.cell(28, 6, "TOTAL SOMA", border=1, fill=True)
                     pdf.cell(12, 6, "", border=1, fill=True)
@@ -1257,7 +1261,6 @@ else:
                     pdf.cell(20, 6, f"R$ {total_custo_efetivo_total:.2f}", border=1, align="C", fill=True)
                     pdf.ln(8)
                     
-                    # Quadro de Indicadores
                     pdf.set_fill_color(30, 58, 138)
                     pdf.set_text_color(255, 255, 255)
                     pdf.set_font("Arial", style="B", size=8)
