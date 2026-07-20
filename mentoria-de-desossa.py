@@ -7,7 +7,7 @@ import io
 from fpdf import FPDF
 
 # =========================================================================
-# 1. CONFIGURAÇÃO VISUAL E PALETA DE CORES PREMIUM (SLATE CORPORATE HIGH-CONTRAST)
+# 1. CONFIGURAÇÃO VISUAL E PALETA DE CORES (BOTÕES EM #A3A3A3)
 # =========================================================================
 st.set_page_config(page_title="Gestão de Desossa - Renato Frigotudo & Associados", layout="wide")
 
@@ -21,7 +21,7 @@ st.markdown(
         color: #0F172A; 
     }
     
-    /* Inputs, seletores e caixas de texto modernas */
+    /* Inputs, seletores e caixas de texto */
     div[data-testid="stTextInput"] input, div[data-testid="stNumberInput"] input, div[data-testid="stSelectbox"] select {
         border: 1px solid #94A3B8 !important;
         border-radius: 8px !important;
@@ -31,8 +31,8 @@ st.markdown(
         padding: 6px 12px !important;
     }
     div[data-testid="stTextInput"] input:focus, div[data-testid="stNumberInput"] input:focus {
-        border-color: #2563EB !important;
-        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2) !important;
+        border-color: #A3A3A3 !important;
+        box-shadow: 0 0 0 2px rgba(163, 163, 163, 0.3) !important;
     }
     
     /* Labels e títulos dos campos */
@@ -42,30 +42,42 @@ st.markdown(
         font-size: 14px !important;
     }
     
-    /* Botões principais do sistema */
-    div.stButton > button:first-child {
-        background-color: #2563EB !important;
-        color: #FFFFFF !important;
+    /* =====================================================================
+       ESTILIZAÇÃO DE TODOS OS BOTÕES NA COR #A3A3A3
+       ===================================================================== */
+    
+    /* Botões das telas principais */
+    div.stButton > button,
+    div.stDownloadButton > button {
+        background-color: #A3A3A3 !important;
+        color: #0F172A !important;
         border-radius: 8px !important;
-        border: none !important;
+        border: 1px solid #737373 !important;
         padding: 8px 18px !important;
         font-weight: 700 !important;
         font-size: 15px !important;
         transition: all 0.2s ease;
     }
-    div.stButton > button:first-child:hover {
-        background-color: #1D4ED8 !important;
+    div.stButton > button:hover,
+    div.stDownloadButton > button:hover {
+        background-color: #8C8C8C !important;
+        color: #0F172A !important;
+        border-color: #525252 !important;
     }
     
-    /* Botões de formulário */
-    form button {
-        background-color: #2563EB !important;
-        color: #FFFFFF !important;
+    /* Botões dentro de formulários */
+    form button,
+    div.stFormSubmitButton > button {
+        background-color: #A3A3A3 !important;
+        color: #0F172A !important;
         border-radius: 8px !important;
+        border: 1px solid #737373 !important;
         font-weight: 700 !important;
     }
-    form button:hover {
-        background-color: #1D4ED8 !important;
+    form button:hover,
+    div.stFormSubmitButton > button:hover {
+        background-color: #8C8C8C !important;
+        color: #0F172A !important;
     }
     
     /* Títulos */
@@ -74,7 +86,7 @@ st.markdown(
         font-weight: 800 !important;
     }
     
-    /* SIDEBAR (MENU LATERAL) - ALTO CONTRASTE E VISIBILIDADE DOS BOTÕES DE BACKUP */
+    /* SIDEBAR (MENU LATERAL) */
     section[data-testid="stSidebar"] {
         background-color: #0F172A !important;
         border-right: 2px solid #1E293B;
@@ -88,24 +100,27 @@ st.markdown(
         font-weight: 600 !important;
     }
     
-    /* Botão de Exportar Backup e Sair no Menu Lateral */
+    /* Botões na Barra Lateral */
     section[data-testid="stSidebar"] div.stButton > button,
+    section[data-testid="stSidebar"] div.stDownloadButton > button,
     section[data-testid="stSidebar"] a {
-        background-color: #1E293B !important;
-        color: #FFFFFF !important;
-        border: 1px solid #38BDF8 !important;
+        background-color: #A3A3A3 !important;
+        color: #0F172A !important;
+        border: 1px solid #737373 !important;
         width: 100% !important;
         font-weight: 700 !important;
     }
-    section[data-testid="stSidebar"] div.stButton > button:hover {
-        background-color: #2563EB !important;
-        border-color: #2563EB !important;
+    section[data-testid="stSidebar"] div.stButton > button:hover,
+    section[data-testid="stSidebar"] div.stDownloadButton > button:hover {
+        background-color: #8C8C8C !important;
+        color: #0F172A !important;
+        border-color: #525252 !important;
     }
     
     /* Caixa de Dropzone/Upload no Menu Lateral */
     section[data-testid="stSidebar"] section[data-testid="stFileUploaderDropzone"] {
         background-color: #1E293B !important;
-        border: 2px dashed #38BDF8 !important;
+        border: 2px dashed #A3A3A3 !important;
         border-radius: 8px !important;
     }
     section[data-testid="stSidebar"] section[data-testid="stFileUploaderDropzone"] div {
@@ -346,7 +361,7 @@ if not st.session_state.logado:
                     st.error("Usuário ou senha incorretos.")
 
 else:
-    # --- BARRA LATERAL (SIDEBAR COM BOTÕES DE BACKUP 100% VISÍVEIS) ---
+    # --- BARRA LATERAL (SIDEBAR COM BOTÕES COR #A3A3A3) ---
     st.sidebar.markdown(f"**🏢 Empresa Usuária:**\n`{st.session_state.empresa_nome.upper()}`")
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 💾 Backup do Sistema")
@@ -719,7 +734,7 @@ else:
                 st.markdown("---")
                 st.subheader("🥩 Cortes do Lote (Digitação Manual ou Upload por Arquivo)")
                 
-                # --- ITEM 5: FUNCIONALIDADE DE UPLOAD EM MASSA DE CORTES (CSV/CFC/EXCEL) ---
+                # --- UPLOAD EM MASSA DE CORTES (CSV / CFC / EXCEL) ---
                 with st.expander("📥 Importar Cortes de Arquivo (CSV / CFC / Excel)", expanded=False):
                     st.info("O arquivo para lote deve conter as colunas: **nome_corte**, **qualidade**, **peso**, **preço_de_venda** (ou preco_venda).")
                     file_cortes = st.file_uploader("Selecione o arquivo de cortes (.csv, .cfc, .xlsx)", type=["csv", "cfc", "xlsx", "xls"], key=f"file_cortes_lote_{v_form}")
@@ -736,11 +751,9 @@ else:
                                     file_cortes.seek(0)
                                     df_uploaded_cortes = pd.read_csv(file_cortes, encoding="latin-1")
                             
-                            # Normalização de nomes de colunas
                             col_map = {col: col.strip().lower().replace(" ", "_") for col in df_uploaded_cortes.columns}
                             df_uploaded_cortes.rename(columns=col_map, inplace=True)
                             
-                            # Busca variação de preço de venda
                             preco_col = None
                             for p_c in ["preco_de_venda", "preço_de_venda", "preco_venda", "preço_venda"]:
                                 if p_c in df_uploaded_cortes.columns:
@@ -1062,7 +1075,7 @@ else:
                     """, unsafe_allow_html=True
                 )
                 
-                # --- ITEM 4: RECONSTRUÇÃO RIGOROSA DAS 15 COLUNAS DO MODELO EXCEL ---
+                # --- AS 15 COLUNAS FIÉIS AO MODELO EXCEL ---
                 linhas_detalhes = []
                 for idx_l, row_l in df_cortes.iterrows():
                     peso = row_l["peso"]
@@ -1101,7 +1114,6 @@ else:
                     
                 df_final = pd.DataFrame(linhas_detalhes)
                 
-                # Somas da linha de rodapé
                 total_peso = df_final["Peso /KG"].sum()
                 total_preco_custo = df_final["PREÇO/CUSTO"].sum()
                 total_faturamento = df_final["VALOR TOTAL DE VENDAS"].sum()
@@ -1147,7 +1159,7 @@ else:
                     })
                 )
                 
-                # --- ITENS 2, 3 E 4: RELATÓRIO PDF COM CABEÇALHO DA EMPRESA USUÁRIA E 15 COLUNAS EXATAS ---
+                # --- EXPORTAÇÃO DO RELATÓRIO PDF COM BOTÃO EM #A3A3A3 ---
                 st.markdown("### 🖨️ Exportação de Relatórios em PDF")
                 
                 def gerar_pdf_lote():
@@ -1155,7 +1167,7 @@ else:
                     pdf.add_page()
                     pdf.set_font("Arial", size=10)
                     
-                    # 1. Cabeçalho Principal (Item 2)
+                    # 1. Cabeçalho Principal (RENATO FRIGOTUDO & ASSOCIADOS)
                     pdf.set_fill_color(30, 58, 138)
                     pdf.rect(10, 10, 277, 14, "F")
                     pdf.set_text_color(255, 255, 255)
@@ -1163,7 +1175,7 @@ else:
                     pdf.set_xy(10, 13)
                     pdf.cell(277, 8, "RENATO FRIGOTUDO & ASSOCIADOS", ln=1, align="C")
                     
-                    # 2. Nome da Empresa Usuária Impresso Abaixo do Cabeçalho (Item 3)
+                    # 2. Nome da Empresa Usuária Impresso Abaixo do Cabeçalho
                     pdf.set_text_color(15, 23, 42)
                     pdf.set_font("Arial", style="B", size=10)
                     pdf.set_xy(10, 26)
@@ -1182,7 +1194,7 @@ else:
                     pdf.cell(277, 6, f"LOTE #{id_selecionado} - {tipo_animal_atual} | Data: {data_br} | Taxas: Cartao {tx_cartao}% | Impostos {tx_impostos}% | Embalagens {tx_embalagens}% | Comissao {tx_comissao}%", ln=1)
                     pdf.ln(2)
                     
-                    # 3. Tabela de Cortes com as 15 Colunas do Modelo Excel (Item 4)
+                    # 3. Tabela de Cortes com as 15 Colunas
                     pdf.set_fill_color(234, 179, 8)
                     pdf.set_font("Arial", style="B", size=7)
                     
@@ -1191,7 +1203,6 @@ else:
                         "Total Vendas", "Lucro Bruto", "% Cortes", "Cartao", "Impostos", "Embal.", 
                         "Comissao", "C.Efet/KG", "C.Efet Total"
                     ]
-                    # Larguras somando 277 mm (A4 Paisagem)
                     widths_excel = [28, 12, 16, 21, 19, 21, 23, 19, 16, 17, 15, 15, 15, 20, 20]
                     
                     for text_h, w_h in zip(headers_excel, widths_excel):
@@ -1217,7 +1228,7 @@ else:
                         pdf.cell(20, 5, f"R$ {r['CUSTO EFETIVO TOTAL']:.2f}", border=1, align="C")
                         pdf.ln()
                         
-                    # Linha do Total Geral
+                    # Linha de Total
                     pdf.set_font("Arial", style="B", size=7)
                     pdf.cell(28, 6, "TOTAL SOMA", border=1, fill=True)
                     pdf.cell(12, 6, "", border=1, fill=True)
