@@ -7,87 +7,110 @@ import io
 from fpdf import FPDF
 
 # =========================================================================
-# 1. CONFIGURAÇÃO VISUAL E PALETA DE CORES PREMIUM (SLATE CORPORATE)
+# 1. CONFIGURAÇÃO VISUAL E PALETA DE CORES PREMIUM (SLATE CORPORATE HIGH-CONTRAST)
 # =========================================================================
-st.set_page_config(page_title="Gestão de Desossa - Renato Frigotudo", layout="wide")
+st.set_page_config(page_title="Gestão de Desossa - Renato Frigotudo & Associados", layout="wide")
 
 st.markdown(
     """
     <style>
+    /* Fundo geral da aplicação */
     .stApp {
         background-color: #F8FAFC;
         font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
-        color: #1E293B; 
+        color: #0F172A; 
     }
+    
+    /* Inputs, seletores e caixas de texto modernas */
     div[data-testid="stTextInput"] input, div[data-testid="stNumberInput"] input, div[data-testid="stSelectbox"] select {
-        border: 1px solid #CBD5E1 !important;
+        border: 1px solid #94A3B8 !important;
         border-radius: 8px !important;
         color: #0F172A !important;
         background-color: #FFFFFF !important;
-        font-weight: 500 !important;
+        font-weight: 600 !important;
         padding: 6px 12px !important;
     }
     div[data-testid="stTextInput"] input:focus, div[data-testid="stNumberInput"] input:focus {
         border-color: #2563EB !important;
-        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1) !important;
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2) !important;
     }
+    
+    /* Labels e títulos dos campos */
     label {
-        color: #475569 !important;
-        font-weight: 600 !important;
+        color: #334155 !important;
+        font-weight: 700 !important;
         font-size: 14px !important;
     }
+    
+    /* Botões principais do sistema */
     div.stButton > button:first-child {
         background-color: #2563EB !important;
         color: #FFFFFF !important;
         border-radius: 8px !important;
         border: none !important;
         padding: 8px 18px !important;
-        font-weight: 600 !important;
+        font-weight: 700 !important;
         font-size: 15px !important;
         transition: all 0.2s ease;
     }
     div.stButton > button:first-child:hover {
         background-color: #1D4ED8 !important;
     }
+    
+    /* Botões de formulário */
     form button {
         background-color: #2563EB !important;
         color: #FFFFFF !important;
         border-radius: 8px !important;
+        font-weight: 700 !important;
     }
     form button:hover {
         background-color: #1D4ED8 !important;
     }
+    
+    /* Títulos */
     h1, h2, h3, h4 {
         color: #0F172A !important; 
-        font-weight: 700 !important;
+        font-weight: 800 !important;
     }
+    
+    /* SIDEBAR (MENU LATERAL) - ALTO CONTRASTE E VISIBILIDADE DOS BOTÕES DE BACKUP */
     section[data-testid="stSidebar"] {
         background-color: #0F172A !important;
-        border-right: 1px solid #1E293B;
+        border-right: 2px solid #1E293B;
     }
     section[data-testid="stSidebar"] p, 
     section[data-testid="stSidebar"] span, 
     section[data-testid="stSidebar"] label,
-    section[data-testid="stSidebar"] h3 {
-        color: #F8FAFC !important;
-        font-weight: 500 !important;
+    section[data-testid="stSidebar"] h3,
+    section[data-testid="stSidebar"] h4 {
+        color: #FFFFFF !important;
+        font-weight: 600 !important;
     }
-    section[data-testid="stSidebar"] div.stButton > button {
+    
+    /* Botão de Exportar Backup e Sair no Menu Lateral */
+    section[data-testid="stSidebar"] div.stButton > button,
+    section[data-testid="stSidebar"] a {
         background-color: #1E293B !important;
-        color: #F8FAFC !important;
-        border: 1px solid #334155 !important;
+        color: #FFFFFF !important;
+        border: 1px solid #38BDF8 !important;
         width: 100% !important;
+        font-weight: 700 !important;
     }
     section[data-testid="stSidebar"] div.stButton > button:hover {
         background-color: #2563EB !important;
         border-color: #2563EB !important;
     }
+    
+    /* Caixa de Dropzone/Upload no Menu Lateral */
     section[data-testid="stSidebar"] section[data-testid="stFileUploaderDropzone"] {
         background-color: #1E293B !important;
-        border: 1px dashed #334155 !important;
+        border: 2px dashed #38BDF8 !important;
+        border-radius: 8px !important;
     }
     section[data-testid="stSidebar"] section[data-testid="stFileUploaderDropzone"] div {
-        color: #F8FAFC !important;
+        color: #FFFFFF !important;
+        font-weight: 600 !important;
     }
     </style>
     """,
@@ -239,7 +262,7 @@ def reset_form_states():
     st.session_state.cortes_temp = []
 
 # =========================================================================
-# 4. ELEMENTOS VISUAIS DE CABEÇALHO
+# 4. ELEMENTOS VISUAIS DE CABEÇALHO DA APLICAÇÃO
 # =========================================================================
 def exibir_cabecalho(nome_empresa_usuaria=None):
     col_logo, col_info = st.columns([1, 4])
@@ -254,11 +277,11 @@ def exibir_cabecalho(nome_empresa_usuaria=None):
 
         st.markdown(
             f"""
-            <div style="padding-top: 10px;">
-                <h1 style="margin: 0; color: #1E3A8A; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 26px; font-weight: bold; letter-spacing: 1px;">
+            <div style="padding-top: 5px;">
+                <h1 style="margin: 0; color: #1E3A8A; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 28px; font-weight: 800; letter-spacing: 1px;">
                     {cabecalho_principal}
                 </h1>
-                <h3 style="margin: 3px 0 0 0; color: #0F172A; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 18px; font-weight: bold;">
+                <h3 style="margin: 4px 0 0 0; color: #0F172A; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 18px; font-weight: 700;">
                     🏢 Empresa Usuária: {subtitulo_empresa}
                 </h3>
                 <p style="margin: 2px 0 0 0; color: #64748B; font-size: 13px; font-weight: 500;">
@@ -323,7 +346,8 @@ if not st.session_state.logado:
                     st.error("Usuário ou senha incorretos.")
 
 else:
-    st.sidebar.markdown(f"**Ativo como:**\n{st.session_state.empresa_nome}")
+    # --- BARRA LATERAL (SIDEBAR COM BOTÕES DE BACKUP 100% VISÍVEIS) ---
+    st.sidebar.markdown(f"**🏢 Empresa Usuária:**\n`{st.session_state.empresa_nome.upper()}`")
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 💾 Backup do Sistema")
     
@@ -331,7 +355,7 @@ else:
         with open("desossa_db.db", "rb") as db_file:
             db_bytes = db_file.read()
         st.sidebar.download_button(
-            label="📥 Exportar Backup",
+            label="📥 Exportar Backup (.db)",
             data=db_bytes,
             file_name=f"backup_desossa_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.db",
             mime="application/octet-stream"
@@ -339,7 +363,7 @@ else:
     except Exception as e:
         st.sidebar.error("Erro ao gerar backup.")
         
-    backup_upload = st.sidebar.file_uploader("📤 Restaurar Backup (.db)", type=["db"])
+    backup_upload = st.sidebar.file_uploader("📤 Restaurar Backup (.db)", type=["db"], key="file_uploader_backup")
     if backup_upload is not None:
         if st.sidebar.button("⚠️ Confirmar Restauração"):
             try:
@@ -366,6 +390,9 @@ else:
     else:
         st.sidebar.markdown("### 🥩 Menu de Operações")
         menu = st.sidebar.radio("Selecione a Tela:", ["Nova Desossa", "Histórico & Edição", "Gerenciar Cadastro de Cortes"])
+
+    # Exibe cabeçalho padrão com o nome da empresa usuária
+    exibir_cabecalho(nome_empresa_usuaria=st.session_state.empresa_nome)
 
     # =========================================================================
     # 6. TELAS EXCLUSIVAS DO ADMINISTRADOR
@@ -427,7 +454,7 @@ else:
                                             duplicados += 1
                                     conn.commit()
                                     conn.close()
-                                    st.success(f"🎉 Importação concluída com sucesso! Adicionados: {sucessos} | Duplicados ignorados: {duplicados}")
+                                    st.success(f"🎉 Importação concluída! Adicionados: {sucessos} | Duplicados ignorados: {duplicados}")
                                     st.session_state.uploader_key += 1
                                     st.rerun()
                         except Exception as e_csv:
@@ -660,6 +687,7 @@ else:
         emp_id_ativo = st.session_state.empresa_id
         v_form = st.session_state.form_version
         
+        # --- TELA: NOVA DESOSSA ---
         if menu == "Nova Desossa":
             st.header("📋 Lançar Nova Ação de Desossa")
             tipos_empresa = get_tipos_desossa(emp_id_ativo)
@@ -688,7 +716,62 @@ else:
                     p_embalagens = st.number_input("Embalagens (%)", min_value=0.0, max_value=100.0, step=0.01, key=f"input_p_embalagens_{v_form}")
                     p_comissao = st.number_input("Comissão (%)", min_value=0.0, max_value=100.0, step=0.01, key=f"input_p_comissao_{v_form}")
 
-                st.subheader("🥩 Cortes do Lote")
+                st.markdown("---")
+                st.subheader("🥩 Cortes do Lote (Digitação Manual ou Upload por Arquivo)")
+                
+                # --- ITEM 5: FUNCIONALIDADE DE UPLOAD EM MASSA DE CORTES (CSV/CFC/EXCEL) ---
+                with st.expander("📥 Importar Cortes de Arquivo (CSV / CFC / Excel)", expanded=False):
+                    st.info("O arquivo para lote deve conter as colunas: **nome_corte**, **qualidade**, **peso**, **preço_de_venda** (ou preco_venda).")
+                    file_cortes = st.file_uploader("Selecione o arquivo de cortes (.csv, .cfc, .xlsx)", type=["csv", "cfc", "xlsx", "xls"], key=f"file_cortes_lote_{v_form}")
+                    
+                    if file_cortes is not None:
+                        try:
+                            file_name = file_cortes.name.lower()
+                            if file_name.endswith('.xlsx') or file_name.endswith('.xls'):
+                                df_uploaded_cortes = pd.read_excel(file_cortes)
+                            else:
+                                try:
+                                    df_uploaded_cortes = pd.read_csv(file_cortes, encoding="utf-8")
+                                except UnicodeDecodeError:
+                                    file_cortes.seek(0)
+                                    df_uploaded_cortes = pd.read_csv(file_cortes, encoding="latin-1")
+                            
+                            # Normalização de nomes de colunas
+                            col_map = {col: col.strip().lower().replace(" ", "_") for col in df_uploaded_cortes.columns}
+                            df_uploaded_cortes.rename(columns=col_map, inplace=True)
+                            
+                            # Busca variação de preço de venda
+                            preco_col = None
+                            for p_c in ["preco_de_venda", "preço_de_venda", "preco_venda", "preço_venda"]:
+                                if p_c in df_uploaded_cortes.columns:
+                                    preco_col = p_c
+                                    break
+                            
+                            if "nome_corte" in df_uploaded_cortes.columns and "qualidade" in df_uploaded_cortes.columns and "peso" in df_uploaded_cortes.columns and preco_col:
+                                if st.button("🚀 Confirmar e Carregar Cortes para este Lote", key=f"btn_confirm_file_cortes_{v_form}"):
+                                    qtd_adicionada = 0
+                                    for _, r_corte in df_uploaded_cortes.iterrows():
+                                        n_corte = str(r_corte["nome_corte"]).strip().upper()
+                                        q_corte = str(r_corte["qualidade"]).strip().upper()
+                                        p_corte = float(r_corte["peso"])
+                                        pv_corte = float(r_corte[preco_col])
+                                        
+                                        if n_corte != "" and p_corte > 0:
+                                            st.session_state.cortes_temp.append({
+                                                "nome_corte": n_corte,
+                                                "qualidade": "OURO" if "OURO" in q_corte else "PRATA",
+                                                "peso": p_corte,
+                                                "preco_venda": pv_corte
+                                            })
+                                            qtd_adicionada += 1
+                                    st.success(f"🎉 {qtd_adicionada} cortes importados com sucesso para a lista!")
+                                    st.rerun()
+                            else:
+                                st.error("❌ O arquivo não possui as colunas obrigatórias: nome_corte, qualidade, peso, preço_de_venda.")
+                        except Exception as e_file:
+                            st.error(f"❌ Erro ao ler o arquivo de cortes: {e_file}")
+
+                # --- DIGITAÇÃO MANUAL DE CORTES ---
                 conn = get_connection()
                 df_rec_cortes = pd.read_sql_query(f"SELECT nome_corte FROM cortes_padrao WHERE tipo_desossa = '{tipo_animal}' AND (empresa_id IS NULL OR empresa_id = {emp_id_ativo}) ORDER BY nome_corte ASC", conn)
                 conn.close()
@@ -706,7 +789,7 @@ else:
                     peso_corte = col_c3.number_input("Peso do Corte (KG)", min_value=0.0, step=0.001, format="%.3f", key=f"input_corte_peso_{v_form}")
                     preco_venda = col_c4.number_input("Preço de Venda (R$/KG)", min_value=0.0, step=0.01, key=f"input_corte_preco_{v_form}")
                     
-                    submitted = st.form_submit_button("➕ Adicionar Corte")
+                    submitted = st.form_submit_button("➕ Adicionar Corte Manualmente")
                     if submitted and nome_corte != "":
                         name_fmt_c = nome_corte.upper()
                         st.session_state.cortes_temp.append({
@@ -715,11 +798,11 @@ else:
                             "peso": peso_corte,
                             "preco_venda": preco_venda
                         })
-                        st.success(f"Adicionado!")
+                        st.success(f"Corte '{name_fmt_c}' adicionado!")
                         st.rerun()
 
                 if st.session_state.cortes_temp:
-                    st.markdown("##### Gerenciar Cortes Adicionados:")
+                    st.markdown("##### 📋 Gerenciar Cortes do Lote Adicionados:")
                     for idx, c in enumerate(st.session_state.cortes_temp):
                         col_ver, col_btn = st.columns([5, 1])
                         col_ver.write(f"**{c['nome_corte']}** ({c['qualidade']}) - {c['peso']:.3f} KG - R$ {c['preco_venda']:.2f}/KG")
@@ -747,6 +830,7 @@ else:
                         reset_form_states()
                         st.rerun()
 
+        # --- TELA: HISTÓRICO & EDIÇÃO ---
         elif menu == "Histórico & Edição":
             st.header("📂 Histórico & Edição de Desossas")
             tipos_empresa = get_tipos_desossa(emp_id_ativo)
@@ -787,7 +871,6 @@ else:
                 tx_embalagens = acao_row["p_embalagens"] if "p_embalagens" in acao_row and acao_row["p_embalagens"] is not None else 0.0
                 tx_comissao = acao_row["p_comissao"] if "p_comissao" in acao_row and acao_row["p_comissao"] is not None else 0.0
 
-                # --- EDICÃO PÓS-FECHAMENTO DE CUSTOS VARIÁVEIS INCLUÍDA ---
                 with st.expander("📝 EDITAR DADOS GERAIS, RENDIMENTO E CUSTOS VARIÁVEIS"):
                     col_ed1, col_ed2, col_ed3 = st.columns(3)
                     with col_ed1:
@@ -836,7 +919,7 @@ else:
                             cursor.execute("UPDATE cortes SET qualidade = ?, peso = ?, preco_venda = ? WHERE id = ?", (c_qual, c_peso, c_preco, corte_row["id"]))
                             conn.commit()
                             conn.close()
-                            st.success("Corte updated!")
+                            st.success("Corte atualizado!")
                             st.rerun()
                             
                         if col_btn_excluir.button("🗑️ Excluir", key=f"del_c_{corte_row['id']}"):
@@ -876,7 +959,7 @@ else:
                 }
                 st.table(pd.DataFrame(apuracao_data).set_index("Apuração do Lote"))
 
-                # Lógica Financeira do Quadro de Indicadores
+                # Lógica Financeira dos Indicadores
                 total_vendas_ouro = sum(df_cortes[df_cortes["qualidade"] == "OURO"]["peso"] * df_cortes[df_cortes["qualidade"] == "OURO"]["preco_venda"])
                 total_vendas_prata = sum(df_cortes[df_cortes["qualidade"] == "PRATA"]["peso"] * df_cortes[df_cortes["qualidade"] == "PRATA"]["preco_venda"])
                 total_vendas_total = total_vendas_ouro + total_vendas_prata
@@ -979,12 +1062,16 @@ else:
                     """, unsafe_allow_html=True
                 )
                 
+                # --- ITEM 4: RECONSTRUÇÃO RIGOROSA DAS 15 COLUNAS DO MODELO EXCEL ---
                 linhas_detalhes = []
                 for idx_l, row_l in df_cortes.iterrows():
                     peso = row_l["peso"]
                     p_venda = row_l["preco_venda"]
-                    fat_linha = peso * p_venda
                     p_custo_kg = p_venda * coeficiente
+                    preco_custo_total_linha = peso * p_custo_kg
+                    fat_linha = peso * p_venda
+                    lucro_bruto = fat_linha - preco_custo_total_linha
+                    pct_cortes = peso / peso_final if peso_final > 0 else 0.0
                     
                     v_cartao = p_venda * (tx_cartao / 100)
                     v_impostos = p_venda * (tx_impostos / 100)
@@ -993,130 +1080,167 @@ else:
                     
                     custo_efetivo_kg = p_custo_kg + v_cartao + v_impostos + v_embalagem + v_comissao
                     custo_efetivo_total = peso * custo_efetivo_kg
-                    lucro_bruto_linha = fat_linha - custo_efetivo_total
-                    rendimento_linha = (peso / peso_final) * 100 if peso_final > 0 else 0
                     
                     linhas_detalhes.append({
-                        "Corte": row_l["nome_corte"], "Qualidade": row_l["qualidade"], "Peso (KG)": peso,
-                        "Preço Venda (R$/KG)": p_venda, "Faturamento Total": fat_linha,
-                        "Cartão (R$/KG)": v_cartao, "Impostos (R$/KG)": v_impostos, "Embalagem (R$/KG)": v_embalagem, "Comissão (R$/KG)": v_comissao,
-                        "Custo Efetivo/KG": custo_efetivo_kg, "Custo Efetivo Total": custo_efetivo_total,
-                        "Margem Líquida (R$)": lucro_bruto_linha, "Rendimento %": rendimento_linha
+                        "Corte/Código": row_l["nome_corte"],
+                        "Qualidade": row_l["qualidade"],
+                        "Peso /KG": peso,
+                        "PREÇO CUSTO/KG": p_custo_kg,
+                        "PREÇO/CUSTO": preco_custo_total_linha,
+                        "PREÇO VENDA/KG": p_venda,
+                        "VALOR TOTAL DE VENDAS": fat_linha,
+                        "LUCRO BRUTO": lucro_bruto,
+                        "PERCENTUAL/CORTES": pct_cortes,
+                        "TAXAS DE CARTÃO": v_cartao,
+                        "IMPOSTOS": v_impostos,
+                        "EMBALAGENS": v_embalagem,
+                        "COMISSÃO": v_comissao,
+                        "CUSTO EFETIVO/KG": custo_efetivo_kg,
+                        "CUSTO EFETIVO TOTAL": custo_efetivo_total
                     })
                     
                 df_final = pd.DataFrame(linhas_detalhes)
-                total_peso = df_final["Peso (KG)"].sum()
-                total_faturamento = df_final["Faturamento Total"].sum()
-                total_custo_total = df_final["Custo Efetivo Total"].sum()
-                total_margem_bruta = df_final["Margem Líquida (R$)"].sum()
-                total_rendimento = df_final["Rendimento %"].sum()
+                
+                # Somas da linha de rodapé
+                total_peso = df_final["Peso /KG"].sum()
+                total_preco_custo = df_final["PREÇO/CUSTO"].sum()
+                total_faturamento = df_final["VALOR TOTAL DE VENDAS"].sum()
+                total_lucro_bruto = df_final["LUCRO BRUTO"].sum()
+                total_pct_cortes = df_final["PERCENTUAL/CORTES"].sum()
+                total_custo_efetivo_total = df_final["CUSTO EFETIVO TOTAL"].sum()
                 
                 linha_total = pd.DataFrame([{
-                    "Corte": "TOTAL SOMA", "Qualidade": "", "Peso (KG)": total_peso,
-                    "Preço Venda (R$/KG)": None, "Faturamento Total": total_faturamento,
-                    "Cartão (R$/KG)": None, "Impostos (R$/KG)": None, "Embalagem (R$/KG)": None, "Comissão (R$/KG)": None,
-                    "Custo Efetivo/KG": None, "Custo Efetivo Total": total_custo_total,
-                    "Margem Líquida (R$)": total_margem_bruta, "Rendimento %": total_rendimento
+                    "Corte/Código": "TOTAL SOMA",
+                    "Qualidade": "",
+                    "Peso /KG": total_peso,
+                    "PREÇO CUSTO/KG": None,
+                    "PREÇO/CUSTO": total_preco_custo,
+                    "PREÇO VENDA/KG": None,
+                    "VALOR TOTAL DE VENDAS": total_faturamento,
+                    "LUCRO BRUTO": total_lucro_bruto,
+                    "PERCENTUAL/CORTES": total_pct_cortes,
+                    "TAXAS DE CARTÃO": None,
+                    "IMPOSTOS": None,
+                    "EMBALAGENS": None,
+                    "COMISSÃO": None,
+                    "CUSTO EFETIVO/KG": None,
+                    "CUSTO EFETIVO TOTAL": total_custo_efetivo_total
                 }])
+                
                 df_com_total = pd.concat([df_final, linha_total], ignore_index=True)
                 
                 st.dataframe(
                     df_com_total.style.format({
-                        "Peso (KG)": "{:.3f}",
-                        "Preço Venda (R$/KG)": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
-                        "Faturamento Total": "R$ {:.2f}",
-                        "Cartão (R$/KG)": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
-                        "Impostos (R$/KG)": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
-                        "Embalagem (R$/KG)": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
-                        "Comissão (R$/KG)": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
-                        "Custo Efetivo/KG": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
-                        "Custo Efetivo Total": "R$ {:.2f}",
-                        "Margem Líquida (R$)": "R$ {:.2f}",
-                        "Rendimento %": "{:.2f}%"
+                        "Peso /KG": "{:.3f}",
+                        "PREÇO CUSTO/KG": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
+                        "PREÇO/CUSTO": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
+                        "PREÇO VENDA/KG": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
+                        "VALOR TOTAL DE VENDAS": "R$ {:.2f}",
+                        "LUCRO BRUTO": "R$ {:.2f}",
+                        "PERCENTUAL/CORTES": lambda x: f"{x*100:.2f}%" if pd.notnull(x) else "-",
+                        "TAXAS DE CARTÃO": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
+                        "IMPOSTOS": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
+                        "EMBALAGENS": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
+                        "COMISSÃO": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
+                        "CUSTO EFETIVO/KG": lambda x: f"R$ {x:.2f}" if pd.notnull(x) else "-",
+                        "CUSTO EFETIVO TOTAL": "R$ {:.2f}"
                     })
                 )
                 
-                # --- NOVIDADE: EXPORTAÇÃO DO RELATÓRIO PDF COM REPLICAÇÃO FIEL DOS INDICADORES ---
-                st.markdown("### 🖨️ Exportação de Relatórios")
+                # --- ITENS 2, 3 E 4: RELATÓRIO PDF COM CABEÇALHO DA EMPRESA USUÁRIA E 15 COLUNAS EXATAS ---
+                st.markdown("### 🖨️ Exportação de Relatórios em PDF")
                 
                 def gerar_pdf_lote():
                     pdf = FPDF(orientation='L', unit='mm', format='A4')
                     pdf.add_page()
                     pdf.set_font("Arial", size=10)
                     
+                    # 1. Cabeçalho Principal (Item 2)
                     pdf.set_fill_color(30, 58, 138)
-                    pdf.rect(10, 10, 277, 15, "F")
+                    pdf.rect(10, 10, 277, 14, "F")
                     pdf.set_text_color(255, 255, 255)
-                    pdf.set_font("Arial", style="B", size=12)
-                    nome_formatado = st.session_state.empresa_nome.upper().encode("latin1", "replace").decode("latin1")
-                    pdf.set_xy(10, 13.5)
-                    pdf.cell(277, 8, nome_formatado, ln=1, align="C")
+                    pdf.set_font("Arial", style="B", size=13)
+                    pdf.set_xy(10, 13)
+                    pdf.cell(277, 8, "RENATO FRIGOTUDO & ASSOCIADOS", ln=1, align="C")
                     
+                    # 2. Nome da Empresa Usuária Impresso Abaixo do Cabeçalho (Item 3)
                     pdf.set_text_color(15, 23, 42)
-                    pdf.set_font("Arial", size=9)
-                    pdf.set_xy(10, 27)
-                    pdf.cell(277, 6, "Rua Paraiso, n. 514 - Pompeu/MG", ln=1, align="C")
+                    pdf.set_font("Arial", style="B", size=10)
+                    pdf.set_xy(10, 26)
+                    nome_emp_pdf = f"Empresa Usuaria: {st.session_state.empresa_nome.upper()}".encode("latin1", "replace").decode("latin1")
+                    pdf.cell(277, 6, nome_emp_pdf, ln=1, align="C")
+                    
+                    pdf.set_font("Arial", size=8)
+                    pdf.cell(277, 5, "Rua Paraiso, n. 514 - Pompeu/MG", ln=1, align="C")
                     
                     pdf.set_draw_color(30, 58, 138)
                     pdf.set_line_width(0.8)
-                    pdf.line(10, 35, 287, 35)
+                    pdf.line(10, 38, 287, 38)
                     
-                    pdf.set_xy(10, 38)
-                    pdf.set_font("Arial", style="B", size=10)
-                    pdf.cell(277, 8, f"LOTE #{id_selecionado} - {tipo_animal_atual} | Data: {data_br} | Taxas: Cartao {tx_cartao}% | Impostos {tx_impostos}% | Embalagens {tx_embalagens}% | Comissao {tx_comissao}%", ln=1)
+                    pdf.set_xy(10, 41)
+                    pdf.set_font("Arial", style="B", size=9)
+                    pdf.cell(277, 6, f"LOTE #{id_selecionado} - {tipo_animal_atual} | Data: {data_br} | Taxas: Cartao {tx_cartao}% | Impostos {tx_impostos}% | Embalagens {tx_embalagens}% | Comissao {tx_comissao}%", ln=1)
                     pdf.ln(2)
                     
+                    # 3. Tabela de Cortes com as 15 Colunas do Modelo Excel (Item 4)
                     pdf.set_fill_color(234, 179, 8)
-                    pdf.set_font("Arial", style="B", size=8)
-                    headers_cortes = ["Corte", "Qual.", "Peso (KG)", "P.Venda", "Fat. Total", "Cartao", "Imposto", "Embal.", "Comis.", "C.Efet/KG", "C.Efet Total", "Marg.Liq", "Rend%"]
-                    widths_cortes = [35, 15, 18, 22, 24, 20, 20, 20, 20, 25, 26, 22, 14]
+                    pdf.set_font("Arial", style="B", size=7)
                     
-                    for text, w in zip(headers_cortes, widths_cortes):
-                        pdf.cell(w, 6, text, border=1, align="C", fill=True)
+                    headers_excel = [
+                        "Corte/Codigo", "Qual.", "Peso/KG", "P.Custo/KG", "P./Custo", "P.Venda/KG", 
+                        "Total Vendas", "Lucro Bruto", "% Cortes", "Cartao", "Impostos", "Embal.", 
+                        "Comissao", "C.Efet/KG", "C.Efet Total"
+                    ]
+                    # Larguras somando 277 mm (A4 Paisagem)
+                    widths_excel = [28, 12, 16, 21, 19, 21, 23, 19, 16, 17, 15, 15, 15, 20, 20]
+                    
+                    for text_h, w_h in zip(headers_excel, widths_excel):
+                        pdf.cell(w_h, 6, text_h, border=1, align="C", fill=True)
                     pdf.ln()
                     
-                    pdf.set_font("Arial", size=7.5)
+                    pdf.set_font("Arial", size=6.5)
                     for _, r in df_final.iterrows():
-                        pdf.cell(35, 5, str(r["Corte"])[:22], border=1)
-                        pdf.cell(15, 5, str(r["Qualidade"]), border=1, align="C")
-                        pdf.cell(18, 5, f"{r['Peso (KG)']:.3f}", border=1, align="C")
-                        pdf.cell(22, 5, f"R$ {r['Preço Venda (R$/KG)']:.2f}", border=1, align="C")
-                        pdf.cell(24, 5, f"R$ {r['Faturamento Total']:.2f}", border=1, align="C")
-                        pdf.cell(20, 5, f"R$ {r['Cartão (R$/KG)']:.2f}", border=1, align="C")
-                        pdf.cell(20, 5, f"R$ {r['Impostos (R$/KG)']:.2f}", border=1, align="C")
-                        pdf.cell(20, 5, f"R$ {r['Embalagem (R$/KG)']:.2f}", border=1, align="C")
-                        pdf.cell(20, 5, f"R$ {r['Comissão (R$/KG)']:.2f}", border=1, align="C")
-                        pdf.cell(25, 5, f"R$ {r['Custo Efetivo/KG']:.2f}", border=1, align="C")
-                        pdf.cell(26, 5, f"R$ {r['Custo Efetivo Total']:.2f}", border=1, align="C")
-                        
-                        if r["Margem Líquida (R$)"] <= 0:
-                            pdf.set_fill_color(254, 226, 226)
-                            pdf.cell(22, 5, f"R$ {r['Margem Líquida (R$)']:.2f}", border=1, align="C", fill=True)
-                        else:
-                            pdf.cell(22, 5, f"R$ {r['Margem Líquida (R$)']:.2f}", border=1, align="C")
-                        pdf.cell(14, 5, f"{r['Rendimento %']:.1f}%", border=1, align="C")
+                        pdf.cell(28, 5, str(r["Corte/Código"])[:18], border=1)
+                        pdf.cell(12, 5, str(r["Qualidade"]), border=1, align="C")
+                        pdf.cell(16, 5, f"{r['Peso /KG']:.3f}", border=1, align="C")
+                        pdf.cell(21, 5, f"R$ {r['PREÇO CUSTO/KG']:.2f}", border=1, align="C")
+                        pdf.cell(19, 5, f"R$ {r['PREÇO/CUSTO']:.2f}", border=1, align="C")
+                        pdf.cell(21, 5, f"R$ {r['PREÇO VENDA/KG']:.2f}", border=1, align="C")
+                        pdf.cell(23, 5, f"R$ {r['VALOR TOTAL DE VENDAS']:.2f}", border=1, align="C")
+                        pdf.cell(19, 5, f"R$ {r['LUCRO BRUTO']:.2f}", border=1, align="C")
+                        pdf.cell(16, 5, f"{r['PERCENTUAL/CORTES']*100:.1f}%", border=1, align="C")
+                        pdf.cell(17, 5, f"R$ {r['TAXAS DE CARTÃO']:.2f}", border=1, align="C")
+                        pdf.cell(15, 5, f"R$ {r['IMPOSTOS']:.2f}", border=1, align="C")
+                        pdf.cell(15, 5, f"R$ {r['EMBALAGENS']:.2f}", border=1, align="C")
+                        pdf.cell(15, 5, f"R$ {r['COMISSÃO']:.2f}", border=1, align="C")
+                        pdf.cell(20, 5, f"R$ {r['CUSTO EFETIVO/KG']:.2f}", border=1, align="C")
+                        pdf.cell(20, 5, f"R$ {r['CUSTO EFETIVO TOTAL']:.2f}", border=1, align="C")
                         pdf.ln()
                         
-                    pdf.cell(35, 6, "TOTAL SOMA", border=1, fill=True)
-                    pdf.cell(15, 6, "", border=1, fill=True)
-                    pdf.cell(18, 6, f"{total_peso:.3f}", border=1, align="C", fill=True)
-                    pdf.cell(22, 6, "-", border=1, align="C", fill=True)
-                    pdf.cell(24, 6, f"R$ {total_faturamento:.2f}", border=1, align="C", fill=True)
+                    # Linha do Total Geral
+                    pdf.set_font("Arial", style="B", size=7)
+                    pdf.cell(28, 6, "TOTAL SOMA", border=1, fill=True)
+                    pdf.cell(12, 6, "", border=1, fill=True)
+                    pdf.cell(16, 6, f"{total_peso:.3f}", border=1, align="C", fill=True)
+                    pdf.cell(21, 6, "-", border=1, align="C", fill=True)
+                    pdf.cell(19, 6, f"R$ {total_preco_custo:.2f}", border=1, align="C", fill=True)
+                    pdf.cell(21, 6, "-", border=1, align="C", fill=True)
+                    pdf.cell(23, 6, f"R$ {total_faturamento:.2f}", border=1, align="C", fill=True)
+                    pdf.cell(19, 6, f"R$ {total_lucro_bruto:.2f}", border=1, align="C", fill=True)
+                    pdf.cell(16, 6, f"{total_pct_cortes*100:.1f}%", border=1, align="C", fill=True)
+                    pdf.cell(17, 6, "-", border=1, align="C", fill=True)
+                    pdf.cell(15, 6, "-", border=1, align="C", fill=True)
+                    pdf.cell(15, 6, "-", border=1, align="C", fill=True)
+                    pdf.cell(15, 6, "-", border=1, align="C", fill=True)
                     pdf.cell(20, 6, "-", border=1, align="C", fill=True)
-                    pdf.cell(20, 6, "-", border=1, align="C", fill=True)
-                    pdf.cell(20, 6, "-", border=1, align="C", fill=True)
-                    pdf.cell(20, 6, "-", border=1, align="C", fill=True)
-                    pdf.cell(25, 6, "-", border=1, align="C", fill=True)
-                    pdf.cell(26, 6, f"R$ {total_custo_total:.2f}", border=1, align="C", fill=True)
-                    pdf.cell(22, 6, f"R$ {total_margem_bruta:.2f}", border=1, align="C", fill=True)
-                    pdf.cell(14, 6, f"{total_rendimento:.1f}%", border=1, align="C", fill=True)
-                    pdf.ln(10)
+                    pdf.cell(20, 6, f"R$ {total_custo_efetivo_total:.2f}", border=1, align="C", fill=True)
+                    pdf.ln(8)
                     
-                    # REPLICAÇÃO EXATA DO QUADRO DE INDICADORES NO PDF
+                    # Quadro de Indicadores
                     pdf.set_fill_color(30, 58, 138)
                     pdf.set_text_color(255, 255, 255)
-                    pdf.set_font("Arial", style="B", size=9)
-                    pdf.cell(277, 6, " QUADRO DE INDICADORES DO LOTE", border=1, ln=1, fill=True)
+                    pdf.set_font("Arial", style="B", size=8)
+                    pdf.cell(277, 5, " QUADRO DE INDICADORES DO LOTE", border=1, ln=1, fill=True)
                     
                     pdf.set_fill_color(241, 245, 249)
                     pdf.set_text_color(15, 23, 42)
@@ -1126,7 +1250,7 @@ else:
                     pdf.cell(40, 5, "TOTAL", border=1, align="C", fill=True)
                     pdf.ln()
                     
-                    pdf.set_font("Arial", size=8)
+                    pdf.set_font("Arial", size=7.5)
                     rows_indicadores = [
                         ("PRECO TOTAL / Compra Sem Custos Variaveis", f"R$ {compra_ouro:.2f}", f"R$ {compra_prata:.2f}", f"R$ {valor_total_compra:.2f}"),
                         ("PRECO TOTAL / Venda", f"R$ {total_vendas_ouro:.2f}", f"R$ {total_vendas_prata:.2f}", f"R$ {total_vendas_total:.2f}"),
@@ -1142,17 +1266,17 @@ else:
                     ]
                     
                     for label_ind, v_ouro, v_prata, v_tot in rows_indicadores:
-                        pdf.cell(117, 5, label_ind, border=1)
-                        pdf.cell(40, 5, v_ouro, border=1, align="C")
-                        pdf.cell(40, 5, v_prata, border=1, align="C")
-                        pdf.cell(40, 5, v_tot, border=1, align="C")
+                        pdf.cell(117, 4.5, label_ind, border=1)
+                        pdf.cell(40, 4.5, v_ouro, border=1, align="C")
+                        pdf.cell(40, 4.5, v_prata, border=1, align="C")
+                        pdf.cell(40, 4.5, v_tot, border=1, align="C")
                         pdf.ln()
                         
                     return pdf.output(dest="S").encode("latin1")
                 
                 pdf_bytes = gerar_pdf_lote()
                 st.download_button(
-                    label="📄 Descarregar Relatório Completo com Quadro de Indicadores em PDF",
+                    label="📄 Descarregar Relatório Completo (15 Colunas) em PDF",
                     data=pdf_bytes,
                     file_name=f"relatorio_lote_{id_selecionado}.pdf",
                     mime="application/pdf"
@@ -1164,5 +1288,5 @@ else:
                     cursor.execute(f"DELETE FROM acoes WHERE id = {id_selecionado} AND empresa_id = {emp_id_ativo}")
                     conn.commit()
                     conn.close()
-                    st.success("Deletado!")
+                    st.success("Lote excluído!")
                     st.rerun()
