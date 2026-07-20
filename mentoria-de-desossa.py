@@ -1098,7 +1098,7 @@ else:
                     "PRATA": [
                         f"R$ {compra_prata:.2f}", f"R$ {total_vendas_prata:.2f}", f"{peso_desossado_prata:.3f}",
                         f"{coeficiente:.6f}", f"R$ {custo_efetivo_total_prata:.2f}", f"R$ {margem_r_prata:.2f}",
-                        f"{margem_p_prata*100:.2f}%", f"{markup_p_prata*100:.2f}%", f"R$ {p_medio_compra_prata:.2f}",
+                        f"{margem_p_prata*100:.2f}%", f"{markup_prata*100:.2f}%", f"R$ {p_medio_compra_prata:.2f}",
                         f"R$ {p_medio_compra_com_prata:.2f}", f"R$ {p_medio_venda_prata:.2f}"
                     ],
                     "Total": [
@@ -1201,7 +1201,7 @@ else:
                     })
                 )
                 
-                # --- EXPORTAÇÃO DO RELATÓRIO PDF (ENDEREÇO REMOVIDO) ---
+                # --- EXPORTAÇÃO DO RELATÓRIO PDF COM O QUADRO APURAÇÃO GERAL DO LOTE ---
                 st.markdown("### 🖨️ Exportação de Relatórios em PDF")
                 
                 def gerar_pdf_lote():
@@ -1217,19 +1217,21 @@ else:
                     pdf.set_xy(10, 13)
                     pdf.cell(277, 8, "RENATO FRIGOTUDO & ASSOCIADOS", ln=1, align="C")
                     
-                    # 2. Nome da Empresa Usuária (sem a linha do endereço)
+                    # 2. Nome da Empresa Usuária
                     pdf.set_text_color(15, 23, 42)
                     pdf.set_font("Arial", style="B", size=10)
                     pdf.set_xy(10, 26)
                     nome_emp_pdf = f"Empresa Usuaria: {st.session_state.empresa_nome.upper()}".encode("latin1", "replace").decode("latin1")
                     pdf.cell(277, 6, nome_emp_pdf, ln=1, align="C")
                     
-                    # Linha Divisória Ajustada
+                    pdf.set_font("Arial", size=8)
+                    pdf.cell(277, 5, "Rua Paraiso, n. 514 - Pompeu/MG", ln=1, align="C")
+                    
                     pdf.set_draw_color(30, 58, 138)
                     pdf.set_line_width(0.8)
-                    pdf.line(10, 34, 287, 34)
+                    pdf.line(10, 38, 287, 38)
                     
-                    pdf.set_xy(10, 37)
+                    pdf.set_xy(10, 41)
                     pdf.set_font("Arial", style="B", size=9)
                     pdf.cell(277, 6, f"LOTE #{id_selecionado} - {tipo_animal_atual} | Data: {data_br} | Taxas: Cartao {tx_cartao}% | Impostos {tx_impostos}% | Embalagens {tx_embalagens}% | Comissao {tx_comissao}%", ln=1)
                     pdf.ln(2)
