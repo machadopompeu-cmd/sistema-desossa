@@ -446,20 +446,33 @@ else:
                     
                     if uploaded_csv is not None:
                         try:
-                            # TENTA LER O CSV TRATANDO ENCODING E SEPARADORES AUTOMATICAMENTE
-                            try:
-                                df_imported = pd.read_csv(uploaded_csv, encoding="utf-8", sep=None, engine="python")
-                            except Exception:
-                                uploaded_csv.seek(0)
-                                df_imported = pd.read_csv(uploaded_csv, encoding="latin-1", sep=None, engine="python")
+                            # TENTA LER O CSV TESTANDO MÚLTIPLAS CODIFICAÇÕES E SEPARADORES
+                            df_imported = None
+                            encodings_to_try = ["utf-8-sig", "latin-1", "utf-8", "cp1252"]
                             
-                            # Normaliza os nomes das colunas
-                            col_map_imp = {col: str(col).strip().lower().replace(" ", "_") for col in df_imported.columns}
+                            for enc in encodings_to_try:
+                                try:
+                                    uploaded_csv.seek(0)
+                                    df_imported = pd.read_csv(uploaded_csv, encoding=enc, sep=None, engine="python")
+                                    if df_imported is not None and not df_imported.empty:
+                                        break
+                                except Exception:
+                                    continue
+                            
+                            if df_imported is None:
+                                uploaded_csv.seek(0)
+                                df_imported = pd.read_csv(uploaded_csv, encoding="latin-1")
+                            
+                            # Normaliza os nomes das colunas (remove espaços, minusculas)
+                            col_map_imp = {col: str(col).strip().lower().replace(" ", "_").replace("\ufeff", "") for col in df_imported.columns}
                             df_imported.rename(columns=col_map_imp, inplace=True)
                             
-                            if "nom_corte" in df_imported.columns and "nome_corte" not in df_imported.columns:
-                                df_imported.rename(columns={"nom_corte": "nome_corte"}, inplace=True)
-                            
+                            # Mapeia variações de nome_corte
+                            for c_var in ["nom_corte", "corte", "nome"]:
+                                if c_var in df_imported.columns and "nome_corte" not in df_imported.columns:
+                                    df_imported.rename(columns={c_var: "nome_corte"}, inplace=True)
+                                    break
+
                             if "nome_corte" not in df_imported.columns:
                                 st.error("❌ Erro: O arquivo CSV não possui a coluna 'nome_corte'.")
                             else:
@@ -757,13 +770,20 @@ else:
                             if file_name.endswith('.xlsx') or file_name.endswith('.xls'):
                                 df_uploaded_cortes = pd.read_excel(file_cortes)
                             else:
-                                try:
-                                    df_uploaded_cortes = pd.read_csv(file_cortes, encoding="utf-8", sep=None, engine="python")
-                                except Exception:
+                                df_uploaded_cortes = None
+                                for enc in ["utf-8-sig", "latin-1", "utf-8", "cp1252"]:
+                                    try:
+                                        file_cortes.seek(0)
+                                        df_uploaded_cortes = pd.read_csv(file_cortes, encoding=enc, sep=None, engine="python")
+                                        if df_uploaded_cortes is not None and not df_uploaded_cortes.empty:
+                                            break
+                                    except Exception:
+                                        continue
+                                if df_uploaded_cortes is None:
                                     file_cortes.seek(0)
-                                    df_uploaded_cortes = pd.read_csv(file_cortes, encoding="latin-1", sep=None, engine="python")
+                                    df_uploaded_cortes = pd.read_csv(file_cortes, encoding="latin-1")
                             
-                            col_map = {col: str(col).strip().lower().replace(" ", "_") for col in df_uploaded_cortes.columns}
+                            col_map = {col: str(col).strip().lower().replace(" ", "_").replace("\ufeff", "") for col in df_uploaded_cortes.columns}
                             df_uploaded_cortes.rename(columns=col_map, inplace=True)
                             
                             if "nom_corte" in df_uploaded_cortes.columns and "nome_corte" not in df_uploaded_cortes.columns:
