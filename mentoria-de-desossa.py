@@ -446,13 +446,18 @@ else:
                     
                     if uploaded_csv is not None:
                         try:
+                            # TENTA LER O CSV TRATANDO ENCODING E SEPARADORES AUTOMATICAMENTE
                             try:
                                 df_imported = pd.read_csv(uploaded_csv, encoding="utf-8", sep=None, engine="python")
                             except Exception:
                                 uploaded_csv.seek(0)
                                 df_imported = pd.read_csv(uploaded_csv, encoding="latin-1", sep=None, engine="python")
                             
-                            if "nom_corte" in df_imported.columns:
+                            # Normaliza os nomes das colunas
+                            col_map_imp = {col: str(col).strip().lower().replace(" ", "_") for col in df_imported.columns}
+                            df_imported.rename(columns=col_map_imp, inplace=True)
+                            
+                            if "nom_corte" in df_imported.columns and "nome_corte" not in df_imported.columns:
                                 df_imported.rename(columns={"nom_corte": "nome_corte"}, inplace=True)
                             
                             if "nome_corte" not in df_imported.columns:
@@ -758,7 +763,7 @@ else:
                                     file_cortes.seek(0)
                                     df_uploaded_cortes = pd.read_csv(file_cortes, encoding="latin-1", sep=None, engine="python")
                             
-                            col_map = {col: col.strip().lower().replace(" ", "_") for col in df_uploaded_cortes.columns}
+                            col_map = {col: str(col).strip().lower().replace(" ", "_") for col in df_uploaded_cortes.columns}
                             df_uploaded_cortes.rename(columns=col_map, inplace=True)
                             
                             if "nom_corte" in df_uploaded_cortes.columns and "nome_corte" not in df_uploaded_cortes.columns:
@@ -1207,7 +1212,7 @@ else:
                     pdf.cell(277, 6, f"LOTE #{id_selecionado} - {tipo_animal_atual} | Data: {data_br} | Taxas: Cartao {tx_cartao}% | Impostos {tx_impostos}% | Embalagens {tx_embalagens}% | Comissao {tx_comissao}%", ln=1)
                     pdf.ln(2)
 
-                    # 3. TABELA APURAÇÃO GERAL DO LOTE (INCLUÍDA AQUI CONFORME SOLICITADO)
+                    # 3. TABELA APURAÇÃO GERAL DO LOTE (INCLUÍDA ANTES DOS CORTES)
                     pdf.set_fill_color(30, 58, 138)
                     pdf.set_text_color(255, 255, 255)
                     pdf.set_font("Arial", style="B", size=8)
@@ -1239,7 +1244,7 @@ else:
                         pdf.cell(50, 4.5, pct_val, border=1, align="C")
                         pdf.ln()
 
-                    pdf.ln(4) # Espaçamento pré-tabela de cortes
+                    pdf.ln(4)
                     
                     # 4. Tabela de Cortes com as 15 Colunas
                     pdf.set_fill_color(234, 179, 8)
