@@ -446,16 +446,18 @@ else:
                     
                     if uploaded_csv is not None:
                         try:
-                            # TENTA LER O CSV TESTANDO MÚLTIPLAS CODIFICAÇÕES E SEPARADORES
+                            # LEITURA ROBUSTA SEM SUPOSIÇÃO DE SEPARADOR EQUIVOCADA
                             df_imported = None
-                            encodings_to_try = ["utf-8-sig", "latin-1", "utf-8", "cp1252"]
+                            encodings_to_try = ["latin-1", "utf-8-sig", "utf-8", "cp1252"]
                             
                             for enc in encodings_to_try:
                                 try:
                                     uploaded_csv.seek(0)
-                                    df_imported = pd.read_csv(uploaded_csv, encoding=enc, sep=None, engine="python")
-                                    if df_imported is not None and not df_imported.empty:
-                                        break
+                                    df_imported = pd.read_csv(uploaded_csv, encoding=enc, sep=";")
+                                    if len(df_imported.columns) == 1:
+                                        uploaded_csv.seek(0)
+                                        df_imported = pd.read_csv(uploaded_csv, encoding=enc)
+                                    break
                                 except Exception:
                                     continue
                             
@@ -463,11 +465,11 @@ else:
                                 uploaded_csv.seek(0)
                                 df_imported = pd.read_csv(uploaded_csv, encoding="latin-1")
                             
-                            # Normaliza os nomes das colunas (remove espaços, minusculas)
+                            # Limpa os cabeçalhos
                             col_map_imp = {col: str(col).strip().lower().replace(" ", "_").replace("\ufeff", "") for col in df_imported.columns}
                             df_imported.rename(columns=col_map_imp, inplace=True)
                             
-                            # Mapeia variações de nome_corte
+                            # Mapeia colunas similares
                             for c_var in ["nom_corte", "corte", "nome"]:
                                 if c_var in df_imported.columns and "nome_corte" not in df_imported.columns:
                                     df_imported.rename(columns={c_var: "nome_corte"}, inplace=True)
@@ -771,12 +773,14 @@ else:
                                 df_uploaded_cortes = pd.read_excel(file_cortes)
                             else:
                                 df_uploaded_cortes = None
-                                for enc in ["utf-8-sig", "latin-1", "utf-8", "cp1252"]:
+                                for enc in ["latin-1", "utf-8-sig", "utf-8", "cp1252"]:
                                     try:
                                         file_cortes.seek(0)
-                                        df_uploaded_cortes = pd.read_csv(file_cortes, encoding=enc, sep=None, engine="python")
-                                        if df_uploaded_cortes is not None and not df_uploaded_cortes.empty:
-                                            break
+                                        df_uploaded_cortes = pd.read_csv(file_cortes, encoding=enc, sep=";")
+                                        if len(df_uploaded_cortes.columns) == 1:
+                                            file_cortes.seek(0)
+                                            df_uploaded_cortes = pd.read_csv(file_cortes, encoding=enc)
+                                        break
                                     except Exception:
                                         continue
                                 if df_uploaded_cortes is None:
@@ -1232,7 +1236,7 @@ else:
                     pdf.cell(277, 6, f"LOTE #{id_selecionado} - {tipo_animal_atual} | Data: {data_br} | Taxas: Cartao {tx_cartao}% | Impostos {tx_impostos}% | Embalagens {tx_embalagens}% | Comissao {tx_comissao}%", ln=1)
                     pdf.ln(2)
 
-                    # 3. TABELA APURAÇÃO GERAL DO LOTE (INCLUÍDA ANTES DOS CORTES)
+                    # 3. TABELA APURAÇÃO GERAL DO LOTE
                     pdf.set_fill_color(30, 58, 138)
                     pdf.set_text_color(255, 255, 255)
                     pdf.set_font("Arial", style="B", size=8)
