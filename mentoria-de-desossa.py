@@ -883,17 +883,34 @@ else:
                         reset_form_states()
                         st.rerun()
 
-        # --- TELA: HISTÓRICO & EDIÇÃO ---
+        # --- TELA: HISTÓRICO & EDIÇÃO (COM FILTRO DE DATA) ---
         elif menu == "Histórico & Edição":
             st.header("📂 Histórico & Edição de Desossas")
             tipos_empresa = get_tipos_desossa(emp_id_ativo)
             
+            # --- FILTRO DE DATA NAS CONSULTAS ---
+            st.markdown("#### 📅 Filtrar por Período de Data")
+            col_f1, col_f2 = st.columns(2)
+            
+            # Padrão: início do mês atual até o dia de hoje
+            hoje = datetime.date.today()
+            inicio_mes_padrao = hoje.replace(day=1)
+            
+            data_inicio_filtro = col_f1.date_input("Data Inicial", inicio_mes_padrao, key="filtro_data_inicio")
+            data_fim_filtro = col_f2.date_input("Data Final", hoje, key="filtro_data_fim")
+            
             conn = get_connection()
-            df_acoes = pd.read_sql_query(f"SELECT * FROM acoes WHERE empresa_id = {emp_id_ativo} ORDER BY data_acao DESC", conn)
+            query_historico = """
+                SELECT * FROM acoes 
+                WHERE empresa_id = ? 
+                  AND data_acao BETWEEN ? AND ? 
+                ORDER BY data_acao DESC
+            """
+            df_acoes = pd.read_sql_query(query_historico, conn, params=(emp_id_ativo, str(data_inicio_filtro), str(data_fim_filtro)))
             conn.close()
             
             if df_acoes.empty:
-                st.warning("Ainda não existem desossas cadastradas para a sua empresa.")
+                st.warning(f"Ainda não existem desossas cadastradas para a sua empresa entre {data_inicio_filtro.strftime('%d/%m/%Y')} e {data_fim_filtro.strftime('%d/%m/%Y')}.")
             else:
                 opcoes_map = {}
                 opcoes_lista = []
@@ -904,7 +921,7 @@ else:
                     opcoes_map[label] = row['id']
                     opcoes_lista.append(label)
                     
-                if "lote_selecionado_id" not in st.session_state:
+                if "lote_selecionado_id" not in st.session_state or st.session_state.lote_selecionado_id not in opcoes_map.values():
                     st.session_state.lote_selecionado_id = opcoes_map[opcoes_lista[0]]
                     
                 label_inicial = [k for k, v in opcoes_map.items() if v == st.session_state.lote_selecionado_id]
